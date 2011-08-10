@@ -1,0 +1,37 @@
+
+test_luna/*.lua : self-contained examples (run make.sh to run) 
+These examples are starting points for your project.
+
+examples/*.lua : real-world examples that use all available functionalities (run gen.sh to convert.)
+The real-world examples do not run on your system because of missing dependencies.
+
+Supported type:
+	class   ( corresponds to a userdata that has a metatable )
+	module  ( corresponds to a table. Multiple modules can have the same name. )
+
+Supported class properties:
+	name
+	className
+	inheritsFrom
+	ctors
+	wrapperCode : custum function definitions (any valid c++ code which goes into the output cpp file.)
+	decl : custum class declarations (any valid c++ code which goes into the output header file)
+	globalWrapperCode :custum function definitions (any valid c++ code which goes into the output cpp file.)
+	ifdef
+	ifndef
+	if_
+	isLuaInheritable
+	enums
+	staticMemberFunctions
+	memberFunctionsFromFile
+	memberFunctions
+	isExtendableFromLua : for c++ inheritance from lua. See test_inheritance.lua
+	properties 
+	read_properties
+	write_properties
+	custumFunctionsToRegister : luna-gen can register a custum function 'int funcName(lua_State* L)'
+
+Sorry for the lack of documentation. 
+Search for keyword in examples to see its usage, or ask me so that I can update this document. 
+
+taesoobear@gmail.com
