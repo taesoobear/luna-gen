@@ -5,3 +5,4 @@
 test_luna/build_*
 test_luna/bin
 test_luna/generated
+examples/generated
