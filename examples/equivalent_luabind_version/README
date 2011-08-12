@@ -1,0 +1,11 @@
+I was a long time luabind user but I often experienced strange memory bugs that are very hard to debug.
+When I noticed there are some subtle problems, it was already too late and I am absolutely convinced 
+that there was no way that I can debug those problems. Projects were huge, and those bugs were not reproducible
+in small programs. It seemed that they are related to luabind though. 
+So recently I developed luna-gen and migrated to it.
+And all of those strange bugs are gone. 
+
+I am not suggesting that luabind is buggy, which I don't know for sure. 
+What I think is that luabind automates too much by default, and it complicates things. 
+
+I upload here the original luabind version of the bind codes so that you can compare how to use luabind and luna-gen.
