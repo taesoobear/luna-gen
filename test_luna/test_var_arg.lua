@@ -55,6 +55,7 @@ function generate()
 						printf("%d ", (int)lua_tonumber(L,i));
 					}
 					printf("\n");
+					return 0;
 				}
 				static int foo2(lua_State* L)
 				{
@@ -96,6 +97,7 @@ function generate()
 						printf("%d ", (int)lua_tonumber(L,i));
 					}
 					printf("\n");
+					return 0;
 				}
 				]],
 				custumFunctionsToRegister={'f'},

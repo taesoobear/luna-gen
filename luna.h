@@ -21,27 +21,7 @@ struct luna_eqstr{
 };
 
 typedef int (*luna_mfp)(lua_State *L);
-#ifdef _MSC_VER
-/* buggy#include <hash_map>
-class luna_stringhasher : public stdext::hash_compare <const char*>
-{
-public:
-  size_t operator() (const char* s) const
-  {
-    size_t h = 0;
-	const char* p;
-    for(p = s; p != NULL; ++p) h = 31 * h + (*p);
-    return h;
-  }
-  
-  bool operator() (const char* s1, const char* s2) const
-  {
-    return strcmp(s1 , s2)<0;
-  }
-};
-
-typedef stdext::hash_map<const char*, luna_mfp, luna_stringhasher> luna__hashmap;
-*/
+#ifdef NO_HASH_MAP
 #include <map>
 struct luna_ltsz: std::binary_function<char* const &, char* const &, bool>
 {
@@ -51,7 +31,30 @@ struct luna_ltsz: std::binary_function<char* const &, char* const &, bool>
 	}
 };
 typedef std::map<const char*, luna_mfp, luna_ltsz> luna__hashmap;
-#else
+#else // not defined NO_HASH_MAP
+#ifdef _MSC_VER
+#include <hash_map>
+
+class luna_stringhasher : public stdext::hash_compare <const char*>
+{
+public:
+  size_t operator() (const char* in) const
+  {
+    size_t h = 0;
+	const char* p;
+    for(p = in; *p != 0; ++p)
+		h = 31 * h + (*p);
+    return h;
+  }
+  
+  bool operator() (const char* s1, const char* s2) const
+  {
+    return strcmp(s1, s2)<0;
+  }
+};
+
+typedef stdext::hash_map<const char*, luna_mfp, luna_stringhasher> luna__hashmap;
+#else // UNIX
 #ifndef CXX_ENABLED
 #include <ext/hash_map> 
 typedef __gnu_cxx::hash<const char*> luna_hash_t;
@@ -61,7 +64,8 @@ typedef __gnu_cxx::hash_map<const char*, luna_mfp, luna_hash_t, luna_eqstr> luna
 typedef std::hash<const char*> luna_hash_t;
 typedef std::unordered_map<const char*, luna_mfp, luna_hash_t, luna_eqstr> luna__hashmap;
 #endif
-#endif
+#endif // UNIX
+#endif // not defined NO_HASH_MAP
 
 typedef struct { const char *name; luna_mfp mfunc; } luna_RegType;
 
@@ -317,7 +321,7 @@ class lunaStack
 	inline int gettop() { return lua_gettop(L);}
 	inline double tonumber(int i) { return luaL_checknumber(L, i);}
 	inline const char* tostring(int i) { return luaL_checkstring(L, i);}
-	inline bool toboolean(int i) { return lua_toboolean(L, i);}
+	inline bool toboolean(int i) { return lua_toboolean(L, i)==1;}
 	template <class T> T* topointer(int i) { return (T*)Luna<typename LunaTraits<T>::base_t>::check(L,i);}  
 
 	inline void _incr(){

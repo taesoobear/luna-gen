@@ -76,13 +76,22 @@ function os.currentDirectory()
 		return os.capture('cd')
 	end
 end
-function os.copyFile(mask)
+function os.copyFile(mask, mask2)
 
    if os.isUnix() then
-      os.execute("cp "..mask)
+	   if mask2 then
+		   os.execute('cp "'..mask..'" "'..mask2..'"')
+	   else
+		   os.execute("cp "..mask)
+	   end
    else
-      print("copy "..      string.gsub(mask, '/', '\\'))
-      os.execute("copy "..      string.gsub(mask, '/', '\\'))
+	   if mask2 then
+		   print('copy "'..      string.gsub(mask, '/', '\\')..'" "'..string.gsub(mask2, '/', '\\')..'"')
+		   os.execute('copy "'..      string.gsub(mask, '/', '\\')..'" "'..string.gsub(mask2, '/', '\\')..'"')
+	   else
+		   print("copy "..      string.gsub(mask, '/', '\\'))
+		   os.execute("copy "..      string.gsub(mask, '/', '\\'))
+	   end
    end
 end
 

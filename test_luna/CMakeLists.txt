@@ -21,6 +21,8 @@ if(UNIX)
 else()
 	set(LUA_INCLUDE_DIR "${test_SOURCE_DIR}/../Lua5.1.4/include")
 	set(LUA_LIBRARY "${test_SOURCE_DIR}/../lua5.1.4/lua5.1.lib")
+    set(LINK_FLAGS "${LINK_FLAGS} -mwindows -mconsole")
+	add_definitions(-D_CONSOLE)
 endif()
 
 include_directories(
@@ -65,6 +67,7 @@ function(add_luna_test x)
 	# param: executable file libraries
 	target_link_libraries("test_${x}" ${LUA_LIBRARY})
 
+	if(UNIX)
 	# execute built test routine
 	add_custom_command(
 		TARGET "test_${x}"
@@ -72,6 +75,7 @@ function(add_luna_test x)
 		POST_BUILD	
 		COMMAND "${EXECUTABLE_OUTPUT_PATH}/test_${x}"
 		)
+	endif()
 endfunction()
 
 add_luna_test("garbage_collection")
