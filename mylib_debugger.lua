@@ -184,7 +184,7 @@ function os._vi(servername, ...)
 				if os.isUnix() then
 					os.execute(cmd.."&")
 				else
-					os.execute(cmd)
+					os.execute("start "..cmd)
 				end
 			else
 				local lastSep
