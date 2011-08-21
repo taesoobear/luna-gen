@@ -1365,7 +1365,7 @@ function writeDefinitions(bindTarget, bindfunc_name)
 			-- default ctor that does nothing
 			local def=cppclass_name..'* LunaTraits<'..cppclass_name..' >::_bind_ctor(lua_State *L)\n  {'
 			addLine('  '..def)
-			addLine('   cout<<"undefined contructor of '..cppclass_name..' called\\n";')
+			addLine('   std::cerr<"undefined contructor of '..cppclass_name..' called\\n";')
 			addLine('	return NULL;')
 			addLine('  }')
 			addLine('  void LunaTraits<'..cppclass_name..' >::_bind_dtor('..cppclass_name..'* obj){')
