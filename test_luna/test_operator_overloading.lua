@@ -33,6 +33,9 @@ function generate()
 		// can bind both member and non-member operators
 		vector3    operator+( vector3 const& ) const;
 		friend vector3  operator-(vector3 const& a, vector3 const& b) ;
+		bool operator==(vector3 const& b) const { return x==b.x && y==b.y && z==b.z;}
+		bool operator<=(vector3 const& b) const { return length()<=b.length() ;}
+		bool operator<(vector3 const& b) const { return length()<b.length() ;}
 
 		void zero(){x=y=z=0;}
 		m_real length() const;
@@ -97,8 +100,21 @@ function generate()
 			a.x=a.x+1
 		end
 		print('a.x='..a.x)
+		print('test: (0,1,2) +,- (3,4,2)')
 		print(test.vector3(0,1,2)+test.vector3(3,4,2))
 		print(test.vector3(0,1,2)-test.vector3(3,4,2))
+		print('test: ==')
+		print(test.vector3(0,1,2)==test.vector3(0,1,2))
+		print(test.vector3(0,1,2)==test.vector3(0,1,4))
+		print('test: ~=')
+		print(test.vector3(0,1,2)~=test.vector3(0,1,2))
+		print(test.vector3(0,1,2)~=test.vector3(0,1,4))
+		print('test: (0,1,2) <, <=, >, >= (0,1,2)')
+		package.path="../../?.lua;../../../?.lua;package.path" require('mylib') dbg.console()
+		print(test.vector3(0,1,2)<test.vector3(0,1,2))
+		print(test.vector3(0,1,2)<=test.vector3(0,1,2))
+		print(test.vector3(0,1,2)>test.vector3(0,1,2))
+		print(test.vector3(0,1,2)>=test.vector3(0,1,2))
 		]])..[[);
 		printf("test_operator overloading 1 finished\n");
 		]])
@@ -151,6 +167,9 @@ bindTarget={
 				vector3 length() const;
 				vector3    operator+( vector3 const& ) const;
 				void operator=(const vector3&); @ assign // note that the signature can be different. 
+				bool operator==(vector3 const& b) const
+				bool operator<=(vector3 const& b) const
+				bool operator<(vector3 const& b) const
 				]],
 				-- @ means 'rename'
 			},

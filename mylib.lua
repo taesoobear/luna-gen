@@ -656,6 +656,8 @@ function table.tostring(t)
 			return '"'..tostring(v)..'"'
 		elseif tv=="table" then
 			return table.tostring(v)
+		else 
+			return tostring(v)
 		end
 	end
 

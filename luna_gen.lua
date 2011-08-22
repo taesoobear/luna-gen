@@ -13,7 +13,7 @@ do -- use conf : all these can be changed in input file or from command line arg
 	gen_lua.string_types={'const%s+char%s*%*', 'std%s*::%s*string', 'TString'} -- string types has to support static conversion  to const char*, and construction from const char*.
 	gen_lua.string_to_cstr={'@'              , '@.c_str()',         '@.ptr()'}
 	gen_lua.string_from_cstr={'@'            , 'std::string(@)',    'TString(@)'}
-	gen_lua.auto_rename={{'rsub', 'operator%s*-='},{'rmod', 'operator%s*%%='},{'radd', 'operator%s*+='},{'rmult', 'operator%s*%*='}, {'rdiv', 'operator%s*/='},{'assign', 'operator%s*='},{'__call','operator%s*%(%s*%)'},{'__div','operator%s*/'},{'__mul','operator%s*%*'},{'__add','operator%s*+'}, {'__sub','operator%s*-'},{'__mod', 'operator%s*%%'},} -- operator()
+	gen_lua.auto_rename={{'__eq','operator%s*=='},{'__le', 'operator%s*<='},{'__lt', 'operator%s*<'},{'rsub', 'operator%s*-='},{'rmod', 'operator%s*%%='},{'radd', 'operator%s*+='},{'rmult', 'operator%s*%*='}, {'rdiv', 'operator%s*/='},{'assign', 'operator%s*='},{'__call','operator%s*%(%s*%)'},{'__div','operator%s*/'},{'__mul','operator%s*%*'},{'__add','operator%s*+'}, {'__sub','operator%s*-'},{'__mod', 'operator%s*%%'},} -- operator()
 	gen_lua.modifiers={'const', '%*', '&','inline','virtual'}
 	gen_lua.single_letter_modifiers={'%*', '&'}
 	gen_lua.enable_type_checking=true  -- even with this option turned off, some type checking that don't affect computation time is still turned on.
@@ -1365,7 +1365,7 @@ function writeDefinitions(bindTarget, bindfunc_name)
 			-- default ctor that does nothing
 			local def=cppclass_name..'* LunaTraits<'..cppclass_name..' >::_bind_ctor(lua_State *L)\n  {'
 			addLine('  '..def)
-			addLine('   std::cerr<"undefined contructor of '..cppclass_name..' called\\n";')
+			addLine('   std::cerr<<"undefined contructor of '..cppclass_name..' called\\n";')
 			addLine('	return NULL;')
 			addLine('  }')
 			addLine('  void LunaTraits<'..cppclass_name..' >::_bind_dtor('..cppclass_name..'* obj){')
