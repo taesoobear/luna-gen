@@ -80,7 +80,7 @@ function generate()
 					return 0;
 				}
 				]],
-				custumFunctionsToRegister={'foo','foo2'},
+				customFunctionsToRegister={'foo','foo2'},
 			},
 		},
 		modules={ -- set of functions, listed by namespaces
@@ -100,7 +100,7 @@ function generate()
 					return 0;
 				}
 				]],
-				custumFunctionsToRegister={'f'},
+				customFunctionsToRegister={'f'},
 			},
 		},
 	}

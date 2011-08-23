@@ -6,7 +6,7 @@ do -- use conf : all these can be changed in input file or from command line arg
 	verbosecpp=true  -- easy for debugging cpp compilation error
 	verbose=false
 	gen_lua={}
-	gen_lua.supportedClassProperties={'^ifdef$','^ifndef$','^isLuaInheritable$','^decl$','^if_$', '^enums$','^inheritsFrom$', '^name$','^className$','^ctors$','^wrapperCode$','^globalWrapperCode',  '^staticMemberFunctions$', '^memberFunctionsFromFile$', '^memberFunctions$','^isExtendableFromLua$','^read_properties$','^write_properties$','^custumFunctionsToRegister$', '^properties$',}
+	gen_lua.supportedClassProperties={'^ifdef$','^ifndef$','^isLuaInheritable$','^decl$','^if_$', '^enums$','^inheritsFrom$', '^name$','^className$','^ctors$','^wrapperCode$','^globalWrapperCode',  '^staticMemberFunctions$', '^memberFunctionsFromFile$', '^memberFunctions$','^isExtendableFromLua$','^read_properties$','^write_properties$','^customFunctionsToRegister$', '^properties$',}
 	gen_lua.number_types={'int', 'double', 'float'}
 	gen_lua.enum_types={}
 	gen_lua.boolean_types={'bool'}
@@ -925,13 +925,13 @@ function buildDefinitionDB(...)
 	for iluaclass, luaclass in ipairs(bindTarget.classes) do
 		if luaclass.isLuaInheritable then
 			local cpp_parent_classname=normalizedClassNameToClassName(luaclass.uppermostParent.className)
-			if luaclass.custumFunctionsToRegister==nil then
-				luaclass.custumFunctionsToRegister={}
+			if luaclass.customFunctionsToRegister==nil then
+				luaclass.customFunctionsToRegister={}
 			end
 			luaclass.isExtendableFromLua=true
 			luaclass.defineInheritedIndexMetaMethods=true 
 			-- TODO: need to add the metatable.__index fallback in the default __index and __newindex functions.
-			array.pushBack(luaclass.custumFunctionsToRegister, {'::Luna<'..cpp_parent_classname..' >::new_modified_T', 'new_modified_T'})
+			array.pushBack(luaclass.customFunctionsToRegister, {'::Luna<'..cpp_parent_classname..' >::new_modified_T', 'new_modified_T'})
 		end
 	end
 
@@ -1216,8 +1216,8 @@ function writeDefinitions(bindTarget, bindfunc_name)
 		end
 		collectDefinition(luaclass.allMemberFunctions)
 
-		if luaclass.custumFunctionsToRegister then
-			for i,v in ipairs(luaclass.custumFunctionsToRegister) do
+		if luaclass.customFunctionsToRegister then
+			for i,v in ipairs(luaclass.customFunctionsToRegister) do
 				if type(v)=='table' then
 					array.pushBack(functionsToRegister,{v[1],v[2]})
 				else

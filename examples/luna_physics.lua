@@ -396,7 +396,7 @@ className='VRMLTransform',
 									{"JOINT_ACCELERATION","(int)OpenHRP::DynamicsSimulator::JOINT_ACCELERATION"},
 									{"JOINT_TORQUE","(int)OpenHRP::DynamicsSimulator::JOINT_TORQUE"}
 								},
-								custumFunctionsToRegister={'setSimulatorParam'},
+								customFunctionsToRegister={'setSimulatorParam'},
 								properties={'vectorn _tempPose; @ _lastSimulatedPose'}
 							},
 							{

@@ -182,7 +182,7 @@ wrapperCode=[[
 	}
 ]],
 			
-custumFunctionsToRegister={'__call'},
+customFunctionsToRegister={'__call'},
 		},
 		{
 			name='GlobalUI',

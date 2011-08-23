@@ -110,7 +110,7 @@ function generate()
 		print(test.vector3(0,1,2)~=test.vector3(0,1,2))
 		print(test.vector3(0,1,2)~=test.vector3(0,1,4))
 		print('test: (0,1,2) <, <=, >, >= (0,1,2)')
-		package.path="../../?.lua;../../../?.lua;package.path" require('mylib') dbg.console()
+		--package.path="../../?.lua;../../../?.lua;package.path" require('mylib') dbg.console()
 		print(test.vector3(0,1,2)<test.vector3(0,1,2))
 		print(test.vector3(0,1,2)<=test.vector3(0,1,2))
 		print(test.vector3(0,1,2)>test.vector3(0,1,2))
@@ -144,7 +144,7 @@ bindTarget={
 			},
 			wrapperCode= -- luna_gen doesn't parse this string. just puts it in the cpp output. so you are free to use any valid cpp syntax here.
 			[[
-			// you can implement custum interface function too. (see custumFunctionsToRegister below)
+			// you can implement custom interface function too. (see customFunctionsToRegister below)
 			static int __tostring(lua_State* L)
 			{
 				vector3& self=*luna_t::check(L,1);
@@ -155,7 +155,7 @@ bindTarget={
 				return 1;
 			}
 			]],
-			custumFunctionsToRegister={'__tostring'},
+			customFunctionsToRegister={'__tostring'},
 			memberFunctions = -- list of strings of c++ function declarations.
 			{
 				-- you can enter multiline texts that looks like a cleaned header file

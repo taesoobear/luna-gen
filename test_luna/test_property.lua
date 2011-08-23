@@ -167,7 +167,7 @@ bindTarget={
 			{
 				return a%b;
 			}
-			// you can implement custum interface function too. (see custumFunctionsToRegister below)
+			// you can implement custom interface function too. (see customFunctionsToRegister below)
 			static int __tostring(lua_State* L)
 			{
 				vector3& self=*luna_t::check(L,1);
@@ -190,7 +190,7 @@ bindTarget={
 				void setZ(vector3 & a, m_real b);
 				]]
 			},
-			custumFunctionsToRegister={'__tostring'},
+			customFunctionsToRegister={'__tostring'},
 			memberFunctions = -- list of strings of c++ function declarations.
 			{
 				-- you can enter multiline texts that looks like a cleaned header file
