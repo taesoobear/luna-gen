@@ -336,6 +336,10 @@ function array.foldr(func, val, tbl)
 end
 function array:__init()
 end
+function array:clear()
+	self={}
+	setmetatable(self,array)
+end
 
 function array:size()
 	return table.getn(self)
