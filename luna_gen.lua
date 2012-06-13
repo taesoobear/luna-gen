@@ -1179,7 +1179,7 @@ function writeDefinitions(bindTarget, bindfunc_name)
 
 				local def='static '..cppclass_name..'* _bind_'..ctor.luaname..'(lua_State *L)\n  {'
 				addLine('  inline '..def)
-				if gen_lua.use_profiler then addLine(' FractionTimer t;') end
+				if gen_lua.use_profiler then addLine(' FractionTimer _lunagen_fractiontimer;') end
 
 				addParsedArg(ctor, arg);
 
@@ -1200,7 +1200,7 @@ function writeDefinitions(bindTarget, bindfunc_name)
 				local vv=luaclass.allMemberFunctions[i]
 		
 				addLine('  static int _bind_'..vv.luaname..'(lua_State *L)\n  {')
-				if gen_lua.use_profiler then addLine(' FractionTimer t;') end
+				if gen_lua.use_profiler then addLine(' FractionTimer _lunagen_fractiontimer;') end
 
 				addParsedArg(vv, vv.extended_args)
 				addReturnType(vv,vv.return_type)
