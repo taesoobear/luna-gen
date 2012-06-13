@@ -87,6 +87,8 @@ public:
 
 	void pause()
 	{
+		if(state!=1) 
+			return;
 #ifdef _MSC_VER
 		::QueryPerformanceCounter(&m_Stop);
 
@@ -156,9 +158,9 @@ public:
 
 	static void init()
 	{
-		gTimerInside.start();
+		gTimerInside.reset();
+		gTimerOutside.reset();
 		gTimerOutside.start();
-		gTimerInside.pause();
 	}
 	static double stopInside()
 	{
