@@ -20,9 +20,9 @@
 	className
 	inheritsFrom
 	ctors
-	wrapperCode : custum function definitions (any valid c++ code which goes into the output cpp file.)
-	decl : custum class declarations (any valid c++ code which goes into the output header file)
-	globalWrapperCode :custum function definitions (any valid c++ code which goes into the output cpp file.)
+	wrapperCode : custom function definitions (any valid c++ code which goes into the output cpp file.)
+	decl : custom class declarations (any valid c++ code which goes into the output header file)
+	globalWrapperCode :custom function definitions (any valid c++ code which goes into the output cpp file.)
 	ifdef
 	ifndef
 	if_
@@ -35,7 +35,7 @@
 	properties 
 	read_properties
 	write_properties
-	custumFunctionsToRegister : luna-gen can register a custum function 'int funcName(lua_State* L)'
+	customFunctionsToRegister : luna-gen can register a custom function 'int funcName(lua_State* L)'
 
 Sorry for the lack of documentations. 
 Search for keyword in examples to see its usage, or ask me so that I can update this document. 

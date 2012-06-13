@@ -36,3 +36,7 @@ void luna_dostring(lua_State* L, const char* luacode)
 lunaStack::~lunaStack()
 {
 }
+
+#include "QPerformanceTimer.h"
+QPerformanceTimerCount2 FractionTimer :: gTimerInside;
+QPerformanceTimerCount2 FractionTimer :: gTimerOutside;

@@ -1,14 +1,12 @@
-if [ ! -d ./build_unix ];
+if [  -d ./build_unix ];
 then
 	cd build_unix
-	rm CMakeCache.txt
-	make clean
+	rm -rf *
 	cd ..
 fi
-if [ ! -d ./build_unix_dbg ];
+if [ -d ./build_unix_dbg ];
 then
 	cd build_unix_dbg
-	rm CMakeCache.txt
-	make clean
+	rm -rf *
 	cd ..
 fi

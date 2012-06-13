@@ -448,6 +448,7 @@ end
 function table.isubset(tbl, first, last)
 
 	if last==nil then last=table.getn(tbl) end
+	if last<0 then last=table.getn(tbl)+last+1 end
 
 	local out={}
 	for i=first,last do
@@ -463,6 +464,24 @@ function table.find(tbl, x)
 		end
 	end
 	return nil
+end
+function table.filter(fcn, tbl)
+	local out={}
+	for k,v in pairs(tbl) do
+		if fcn(k,v) then
+			out[k]=v
+		end
+	end
+	return out
+end
+function table.filterByKey(pattern, tbl)
+	local out={}
+	for k,v in pairs(tbl) do
+		if select(1,string.find(k,pattern) ) then
+			out[k]=v
+		end
+	end
+	return out
 end
 
 function table._ijoin(tbl1, tbl2)

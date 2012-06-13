@@ -65,12 +65,12 @@ function generate()
 					int tblidx=2;
 					assert(lua_istable(L,tblidx));
 
-					//int ctop=lua_gettop(L); 
+					//int current_top=lua_gettop(L); 
 					for (int i=1;1; i++){
 						lua_pushnumber(L,i); // top<=top+1
 						lua_gettable(L,tblidx);   // index is replaced by table[index]
-						//int newtop=ctop+1; // absolute index (newtop:4) works
-						int newtop=-1; // relative index (top:-1) is more convenient
+						//int newtop=current_top+1; // absolute index (newtop:4) works but,
+						int newtop=-1;              // relative index (top:-1) is more convenient
 						printf("%dth gettable result:\n",i);
 						luna_printStack(L,true);
 						if (lua_isnil(L,newtop)==1) break;

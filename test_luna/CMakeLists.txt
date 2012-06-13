@@ -59,7 +59,7 @@ function(add_luna_test x)
 	)
 	# param: executable file source files
 	add_executable("test_${x}"
-		"./generated/test_${x}.cpp"
+		"${test_SOURCE_DIR}/generated/test_${x}.cpp"
 		"main.cpp"
 		"../luna.cpp"
 		"../luna.h"
@@ -83,6 +83,7 @@ add_luna_test("var_arg")
 add_luna_test("property")
 add_luna_test("inheritance")
 add_luna_test("operator_overloading")
+add_luna_test("profiler")
 #add_luna_test("table")
 
 
