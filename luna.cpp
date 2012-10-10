@@ -37,6 +37,10 @@ lunaStack::~lunaStack()
 {
 }
 
+// delete following lines if QPerformanceTimer is not used.
 #include "QPerformanceTimer.h"
 QPerformanceTimerCount2 FractionTimer :: gTimerInside;
 QPerformanceTimerCount2 FractionTimer :: gTimerOutside;
+int FractionTimer :: gCount;
+double FractionTimer :: gOverhead;
+

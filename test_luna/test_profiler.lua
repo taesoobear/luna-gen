@@ -12,13 +12,25 @@ function generate()
 
 		Foo()
 		{
-			for (int i=0;  i<100000000; i++)
+			for (int i=0;  i<200000000; i++)
 			++count;
 		}
 
 		~Foo()
 		{
 			--count;
+		}
+
+		void inc()
+		{
+			for (int i=0; i<1; i++)
+				count++;
+		}
+
+		void incMultiple(int n)
+		{
+			for (int i=0; i<n ;i ++)
+				inc();
 		}
 	};
 
@@ -32,8 +44,20 @@ function generate()
 		FractionTimer::init();
 		printf("test profiler started: this can take some time\n");
 		luaL_dostring(L, "x = Foo()\n"); // C++ loops
-		luaL_dostring(L, "for i=1,100000000 do i=i+1 end"); // lua loops
-		printf("test profiler finished: C++ %gms, lua %gms\n", FractionTimer::stopInside(), FractionTimer::stopOutside());
+		luaL_dostring(L, "for i=1,200000000 do i=i+1 end"); // lua loops
+		FractionTimer::printSummary("test1", "C++", "lua");
+		luaL_dostring(L, "x = Foo() for i=1,2000000 do x:inc() end\n"); // lua+cpp loops
+		FractionTimer::printSummary("test2.0", "C++", "lua");
+		luaL_dostring(L, "x = Foo() local inc=Foo.inc for i=1,2000000 do inc(x) end\n"); // lua+cpp loops
+		FractionTimer::printSummary("test2.1", "C++", "lua");
+		luaL_dostring(L, "do local x = Foo() local inc=Foo.inc for i=1,2000000 do inc(x) end end\n"); // lua+cpp loops
+		FractionTimer::printSummary("test2.2", "C++", "lua");
+		luaL_dostring(L, "do local x = Foo() x:incMultiple(2000000) end\n"); // cpp loops
+		FractionTimer::printSummary("test2.3", "C++", "lua");
+		luaL_dostring(L, "for i=1,200000000 do i=i+1 end"); // lua loops only
+		FractionTimer::printSummary("test3", "C++", "lua");
+		luaL_dostring(L, "x = Foo()\n"); // C++ loops only
+		FractionTimer::printSummary("test4", "C++", "lua");
 	}
 	]])
  
@@ -45,11 +69,19 @@ function generate()
 				{
 					'()'
 				},
+				memberFunctions={[[
+				void inc();
+				void incMultiple(int n);
+				]]}
 			},
 		},
 	}
 	buildDefinitionDB(bindTarget)
 	writeDefinitions(bindTarget, "register_foo")
-	flushWritten(input_filepath..'/generated/'..string.sub(input_filename,1,-4)..'cpp')
+	if gen_lua.output_file_name then
+		flushWritten(input_filepath..'/generated/'..gen_lua.output_file_name)
+	else
+		flushWritten(input_filepath..'/generated/'..string.sub(input_filename,1,-4)..'cpp')
+	end
 end
 
