@@ -80,12 +80,19 @@ public:
 #ifdef _MSC_VER
 		::QueryPerformanceCounter(&m_Start);
 #else
+
+#ifdef USE_GETTIMEOFDAY
 		gettimeofday(&m_Start, NULL);
+#else
+		//m_Start=clock();
+		clock_gettime(CLOCK_MONOTONIC_COARSE, &m_Start);
+#endif
+		
 #endif
 		state=1;
 	}
 
-	void pause()
+	inline void pause()
 	{
 		if(state!=1) 
 			return;
@@ -94,16 +101,25 @@ public:
 
 		m_Sum.QuadPart+=m_Stop.QuadPart-m_Start.QuadPart;
 #else
+
+#ifdef USE_GETTIMEOFDAY
 		gettimeofday(&m_Stop, NULL);
 		unsigned long microseconds=
 			(m_Stop.tv_sec-m_Start.tv_sec)*1000000+(m_Stop.tv_usec-m_Start.tv_usec);
+#else
+		//m_Stop=clock();
+		//unsigned long microseconds= (m_Stop-m_Start)*1000000/CLOCKS_PER_SEC;
+		clock_gettime(CLOCK_MONOTONIC_COARSE, &m_Stop);
+		unsigned long microseconds=
+			(m_Stop.tv_sec-m_Start.tv_sec)*1000000+(m_Stop.tv_nsec-m_Start.tv_nsec)/1000;
+#endif
 		m_Sum+=microseconds;
 #endif
 		m_count++;
 		state=2;
 	}
 
-	long stop()
+	inline long stop()
 	{
 		if(state==1) pause();
 		int micro=end();
@@ -117,7 +133,7 @@ public:
 
 protected:
 	int state;
-	long end()
+	inline long end()
 	{
 #ifdef _MSC_VER
 		LARGE_INTEGER freq;
@@ -138,8 +154,14 @@ protected:
 	LARGE_INTEGER m_Stop;
 	LARGE_INTEGER m_Sum;
 #else
+#ifdef USE_GETTIMEOFDAY // HIGH RESOLUTION but SLOWWWWWW
 	struct timeval m_Start;
 	struct timeval m_Stop;
+#else  // LOW RESOLUTION
+	//clock_t m_Start;
+	//clock_t m_Stop;
+	timespec m_Start, m_Stop;
+#endif
 	long m_Sum;
 #endif
 	int m_count, m_gran, minTime, maxTime;
@@ -149,18 +171,36 @@ class FractionTimer
 {
 	static QPerformanceTimerCount2 gTimerInside;
 	static QPerformanceTimerCount2 gTimerOutside;
+	static int gCount;
+	static double gOverhead;
 public:
-	FractionTimer()
+	inline FractionTimer()
 	{
 		gTimerInside.start();
 		gTimerOutside.pause();
+		gCount++;
 	}
 
 	static void init()
 	{
+		{
+			// measure profiling overhead
+			gTimerInside.reset();
+			gTimerOutside.reset();
+			gTimerOutside.start();
+			int N=100000;
+			for (int i=0; i<N; i++)
+			{
+				gTimerInside.start();
+				gTimerInside.pause();
+			}
+			gOverhead=gTimerOutside.stop()/1000.0/(double)N;
+			//printf("gOverhead %g %g\n", gOverhead*N, gTimerInside.stop()/1000.0);
+		}
 		gTimerInside.reset();
 		gTimerOutside.reset();
 		gTimerOutside.start();
+		gCount=0;
 	}
 	static double stopInside()
 	{
@@ -171,10 +211,32 @@ public:
 		return (double)gTimerOutside.stop()/1000.0;
 	}
 
-	~FractionTimer(void)
+	static void printSummary(const char* msg, const char* insideName, const char* outsideName)
 	{
-		gTimerInside.pause();
+		double inside=stopInside();
+		double outside=stopOutside();
+		double overhead=gOverhead*gCount;
+#ifdef USE_GETTIMEOFDAY 
+		double errorCorrection=0.4;
+#else
+		double errorCorrection=0;
+#endif
+		printf("Profiling %s finished: %s %gms, %s %gms, profiling overhead %gms, total time %gms\n", msg, insideName, inside-overhead-overhead*errorCorrection, outsideName, outside-overhead-overhead*errorCorrection, overhead*2, inside+outside-overhead*errorCorrection*2);
+		// init without measuring
+		gTimerInside.reset();
+		gTimerOutside.reset();
+		gCount=0;
 		gTimerOutside.start();
+	}
+
+	static int count()
+	{
+		return gCount;
+	}
+	inline ~FractionTimer(void)
+	{
+		gTimerOutside.start();
+		gTimerInside.pause();
 	}
 };
 #endif
