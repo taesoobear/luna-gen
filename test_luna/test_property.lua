@@ -1,6 +1,6 @@
 
 function generate()
-	writeIncludeBlock(true) -- property implementation uses hash_map implementation
+	writeIncludeBlock()
 	write([[
 
 	#include <math.h>

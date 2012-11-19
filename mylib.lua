@@ -283,6 +283,10 @@ local function filter_helper (func, arg_list, results_l)
         end
     end
 end
+function array.sub(arr,first,last)
+	return table.isubset(arr,first,last)
+end
+
 
 function array.filter(func, ...)
     return zip_with_helper(filter_helper, func, ...)

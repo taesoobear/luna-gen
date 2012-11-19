@@ -303,7 +303,8 @@ class lunaStack
 	lua_State* L;
 	int currArg;
 	int delta;
- lunaStack(lua_State* l, bool upward=true):L(l){
+	lunaStack():L(NULL){} // setCheck is necessary before use.
+	lunaStack(lua_State* l, bool upward=true):L(l){
 		if (upward){
 			// useful for retrieving function argument. Retreieving doesn't remove elements from stack
 			setCheckFromBottom();
@@ -313,10 +314,14 @@ class lunaStack
 		}
 	}
 	~lunaStack();
-	inline void setCheckFromTop() { delta=-1; currArg=gettop();}
+	inline void setCheckFromTop() { delta=0; currArg=-1;}// gettop();}
 	inline void setPop() { setCheckFromTop();}
 	inline void setCheckFromBottom() { delta=1; currArg=1;}
 	
+	inline void printStack(bool compact=true)
+	{
+		luna_printStack(L,compact);
+	}
 	// check
 	inline int gettop() { return lua_gettop(L);}
 	inline double tonumber(int i) { return luaL_checknumber(L, i);}
@@ -336,6 +341,8 @@ class lunaStack
 	{ a=os.tostring(os.currArg); os._incr(); return os;}
 	friend lunaStack& operator>>( lunaStack& os, bool& a)        
 	{ a=os.toboolean(os.currArg); os._incr(); return os;}
+	friend lunaStack& operator>>( lunaStack& os, int& a)        
+	{ a=(int)os.tonumber(os.currArg); os._incr(); return os;}
 	// check and pop 
 	template <class T> T* check() { 
 		T* a=topointer<T>(currArg);_incr(); return a;}
@@ -343,14 +350,27 @@ class lunaStack
 	inline void pop() { lua_pop(L,1);}
 
 	friend lunaStack& operator<<( lunaStack& os, double a)		    	{ lua_pushnumber(os.L, a); return os;}
+	friend lunaStack& operator<<( lunaStack& os, bool a)		    	{ lua_pushboolean(os.L, a); return os;}
 	friend lunaStack& operator<<( lunaStack& os, std::string const &a)	{ lua_pushstring(os.L,a.c_str()); return os;}
 
 	// set garbageCollection=true when lua environment needs to adopt the object. 
 	// e.g. push<OBJ>(new OBJ(), true);
 	//      push<OBJ>(pointerToExistingOBJmanagedInsideCpp, false);
 	template <class T> void push(T const* c,bool garbageCollection=false) { Luna<typename LunaTraits<T>::base_t>::push(L,(typename LunaTraits<T>::base_t*)c,garbageCollection, LunaTraits<T>::className);}
-	template <class T> void push(T const& c) { Luna<typename LunaTraits<T>::base_t>::push(L,(typename LunaTraits<T>::base_t*)c,false, LunaTraits<T>::className);}
+	template <class T> void push(T const& c) { Luna<typename LunaTraits<T>::base_t>::push(L,(typename LunaTraits<T>::base_t*)&c,false, LunaTraits<T>::className);}
 
+	// stack[top]=stack[tblindex][index]
+	inline void gettable(int tblindex, int index)
+	{
+		lua_pushnumber(L, index);
+		lua_gettable(L, tblindex);
+	}
+	// stack[top]=stack[tblindex][key]
+	inline void gettable(int tblindex, const char* key)
+	{
+		lua_pushstring(L, key);
+		lua_gettable(L, tblindex);
+	}
 	// stack[top]=_G[key]
 	void getglobal(const char* key){
 		lua_pushstring(L, key);
@@ -389,6 +409,22 @@ class lunaStack
 		lua_gettable(L, -2);
 		lua_insert(L, -2);  // swap table and value 
 		lua_pop(L,1); // pop-out prev table
+	}
+	
+	// linear search
+	inline int arraySize(int tblindex)
+	{
+		if (tblindex==-1) tblindex=gettop();
+		for (int i=1; 1; i++){
+			gettable(tblindex,i);
+			if(lua_isnil(L,-1))
+			{
+				lua_pop(L,1);
+				return i-1;
+			}
+			lua_pop(L,1);
+			//luna_printStack(L, true);
+		}
 	}
 
 	// assuming stack[-1-numIn]==function. (stack: function -> arg1 -> arg2 -> arg_numIn )
@@ -451,7 +487,7 @@ class luna_wrap_object // inherit this object to enable inheritance from lua
 		}
 		lua_pushstring(L, "aUserdata");
 		lua_gettable(L,-3);
-		l.replaceTopLUD((void*)(static_cast<typename LunaTraits<T>::base_t*>(this)));
+		l.replaceTopLUD((void*)(static_cast<typename LunaTraits<T>::base_t*>((T*)this)));
 		lua_remove(L,-3); // pop-out metatable
 		return true;	
 	}

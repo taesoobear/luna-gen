@@ -1,6 +1,9 @@
 gen_lua.use_profiler=true
 function generate()
 	writeIncludeBlock();
+	if gen_lua.use_profiler then
+		write('#define TEST_PROFILER')
+	end
 	write([[
 	#include <cstddef>
 	#include "assert.h"
@@ -41,26 +44,42 @@ function generate()
 	{
 		register_foo(L);
 
+		#ifdef TEST_PROFILER
 		FractionTimer::init();
+		#endif
 		printf("test profiler started: this can take some time\n");
 		luaL_dostring(L, "x = Foo()\n"); // C++ loops
 		luaL_dostring(L, "for i=1,200000000 do i=i+1 end"); // lua loops
+		#ifdef TEST_PROFILER
 		FractionTimer::printSummary("test1", "C++", "lua");
+		#endif
 		luaL_dostring(L, "x = Foo() for i=1,2000000 do x:inc() end\n"); // lua+cpp loops
+		#ifdef TEST_PROFILER
 		FractionTimer::printSummary("test2.0", "C++", "lua");
+		#endif
 		luaL_dostring(L, "x = Foo() local inc=Foo.inc for i=1,2000000 do inc(x) end\n"); // lua+cpp loops
+		#ifdef TEST_PROFILER
 		FractionTimer::printSummary("test2.1", "C++", "lua");
+		#endif
 		luaL_dostring(L, "do local x = Foo() local inc=Foo.inc for i=1,2000000 do inc(x) end end\n"); // lua+cpp loops
+		#ifdef TEST_PROFILER
 		FractionTimer::printSummary("test2.2", "C++", "lua");
+		#endif
 		luaL_dostring(L, "do local x = Foo() x:incMultiple(2000000) end\n"); // cpp loops
+		#ifdef TEST_PROFILER
 		FractionTimer::printSummary("test2.3", "C++", "lua");
+		#endif
 		luaL_dostring(L, "for i=1,200000000 do i=i+1 end"); // lua loops only
+		#ifdef TEST_PROFILER
 		FractionTimer::printSummary("test3", "C++", "lua");
+		#endif
 		luaL_dostring(L, "x = Foo()\n"); // C++ loops only
+		#ifdef TEST_PROFILER
 		FractionTimer::printSummary("test4", "C++", "lua");
+		#endif
 	}
 	]])
- 
+
 	local bindTarget={
 		classes={
 			{

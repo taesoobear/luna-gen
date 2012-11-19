@@ -1,4 +1,118 @@
 
+function dbg.lunaType(c)
+	if type(c)~='userdata' then
+		return nil
+	end
+	local mt= getmetatable(c)
+	if mt==nil then return nil end
+	return mt.luna_class
+end
+function dbg.listLunaClasses(line)
+	local usrCnam= string.sub(line, 7)
+	local out2=''
+	local out=''
+	local outp=''
+	
+	for k,v in pairs(__luna)do
+		if type(v)=='table' then
+			local cname=v.luna_class
+			if cname then
+				local _, className=string.rightTokenize(cname,'%.')
+				local nn=string.sub(k, 1, -string.len(className)-1)
+				local namspac=string.gsub(nn,'_', '.')
+				if namspac=='.' then namspac='' end
+				if usrCnam=='' then
+					out=out..namspac.. className..', '
+				else
+					if namspac..className==usrCnam then
+						local map={__add='+', __mul='*',__div='/', __unm='-', __sub='-'}
+						local lastFn='funcName'
+						for kk,vv in pairs(v) do
+							if type(vv)=='function' then
+								if string.sub(kk,1,13)=='_property_get' then
+									outp=outp .. string.sub(kk,15)..', '
+								elseif string.sub(kk,1,13)=='_property_set' then
+									--outp=outp .. string.sub(kk,15)..','
+								else
+									if map[kk] then
+										out2=out2..map[kk]..', '
+									else
+										out2=out2..kk..', '
+									end
+									lastFn=kk
+								end
+							end
+						end
+						out2=out2..'\n\n Tip! you can see the function parameter types by typing "'..usrCnam..'.'..lastFn..'()"!'
+						out2=out2..'\n Known bug: property names can be incorrectly displayed. "'
+					end
+				end
+			end
+		end
+	end
+	if outp~='' then print('Properties:\n', outp) end
+	print(out)
+	if out2~='' then print('Member functions:\n', out2) end
+end
+function dbg.readLine(cursor)
+	io.write(cursor)
+	util.getch=nil
+	if util.getch then
+		if dbg.readLineInfo==nil then
+			dbg.readLineInfo={""}
+			dbg.readLineInfo.currLine=0
+		end
+		local function save(f)
+			local lines= dbg.readLineInfo
+			lines[#lines+1]=f
+			lines.currLine=#lines
+			return f
+		end
+		local function goUp()
+			local lines= dbg.readLineInfo
+			lines.currLine=math.max(lines.currLine-1,0)
+			return lines[lines.currLine+1]
+		end
+
+		local c=''
+		-- getch gives 27 for non-ascii code
+		while true do 
+			local code=util.getch()
+			local ch= string.char(code)
+			if ch=='\\' then
+				util.putch(ch)
+				ch=string.char(util.getch())
+				if ch==']' then
+					print('cont')
+					return 'cont'
+				elseif ch=='[' then
+					print('s')
+					return 's'
+				elseif ch=='k' then
+					ch=''
+					c=goUp()
+					util.putch('\r'..cursor..c)
+				else
+					c=c..'\\'
+				end
+			end
+			if ch=='\n' then
+				util.putch('\n')
+				return save(c)
+			elseif code==127 then
+				util.putch('\r')
+				c=string.sub(c,1,-2)
+				util.putch(cursor..c)
+			else
+				c=c..ch
+				util.putch(ch)
+			end
+		end
+		return ''
+	else
+		return io.read('*line')
+	end
+end
 function dbg.traceBack(level)
    if level==nil then
       level=1
@@ -20,7 +134,7 @@ function dbg.traceBack(level)
 end
 function os.VI_path()
 	if os.isUnix() then
---		return "vim" 
+--		return "vim"  -- use vim in a gnome-terminal
 		return "gvim"
 	else
 		return "gvim"
@@ -53,7 +167,9 @@ function os.vi_console_cmd(fn, line)
 	else
 		cc=' "'..fn..'"'
 	end
-
+	if not os.isUnix() and os.isFileExist("C:/msysgit/msysgit/share/vim/vim73/vim.exe") then
+		return '"C:/msysgit/msysgit/share/vim/vim73/vim.exe" '..cc
+	end
 	return 'vim '..cc
 end
 function os.emacs_cmd(fn, line)
@@ -66,6 +182,15 @@ function os.emacs_cmd(fn, line)
 
 	--return 'lua ~/.config/mtiler/mstiler.lua launch-gui-app emacs '..cc
 	return 'emacs '..cc
+end
+function os.gedit_cmd(fn, line)
+	local cc
+	if line then
+		cc=' +'..line..' "'..fn..'"'
+	else
+		cc=' "'..fn..'"'
+	end
+	return 'gedit '..cc
 end
 function os.emacs_client_cmd(fn, line)
 	local cc
@@ -103,7 +228,10 @@ function os.vi_line(fn, line)
 		execute(os.vi_console_cmd(fn,line))
 		return
 	end
-	os.launch_vi_server()
+	if not os.launch_vi_server() then
+		print('Please launch gvim first!')
+		return
+	end
 	local VI=os.VI_path()..' --remote-silent'
 	local cmd=VI..' +'..line..' "'..fn..'"'
 	--print(cmd)
@@ -113,32 +241,36 @@ function os.launch_vi_server()
 	local lenvipath=string.len(os.VI_path())
 	if os.vi_check(string.upper(os.VI_path())) then
 		print("VI server GVIM open")
-		return
+		return true
 	end
-	print("launching GVIM server...")
-	if os.isUnix() then
-		if os.VI_path()=="vim" then
-			execute('cd ../..', 'gnome-terminal -e "vim --servername vim"') -- this line is unused by default. (assumed gnome dependency)
+	if false then -- recent ubuntu gvim doesn't start up from a terminal.
+		print("launching GVIM server...")
+		if os.isUnix() then
+			if os.VI_path()=="vim" then
+				execute('cd ../..', 'gnome-terminal -e "vim --servername vim"&') -- this line is unused by default. (assumed gnome dependency)
+			else
+				execute('cd ../..', os.VI_path())
+			end
 		else
-			execute('cd ../..', os.VI_path())
+			if os.isFileExist(os.capture('echo %WINDIR%').."\\vim.bat") then
+				execute('cd ..\\..', os.VI_path())
+			else
+				execute('cd ..\\..', "start "..os.VI_path())
+			end
 		end
-	else
-		if os.isFileExist(os.capture('echo %WINDIR%').."\\vim.bat") then
-			execute('cd ..\\..', os.VI_path())
-		else
-			execute('cd ..\\..', "start "..os.VI_path())
+
+		for i=1,10 do
+			if os.vi_check(string.upper(os.VI_path())) then
+				print("VI server GVIM open")
+				break
+			else
+				print('.')
+				--os.sleep(1)
+			end
 		end
+		return true
 	end
-	
-	for i=1,10 do
-		if os.vi_check(string.upper(os.VI_path())) then
-			print("VI server GVIM open")
-			break
-		else
-			print('.')
-			--os.sleep(1)
-		end
-	end
+	return false
 end
 function os.vi(...)
 	os._vi(os.VI_path(), ...)
@@ -155,7 +287,10 @@ function os._vi(servername, ...)
 
 	local vicwd=os.capture(otherVim..' --servername '..servername..' --remote-expr "getcwd()"')
 	if vicwd=="" then
-		os.launch_vi_server()
+		if not os.launch_vi_server() then
+			print('Please launch gvim first!')
+			return
+		end
 		-- try one more time
 		vicwd=os.capture(otherVim ..' --servername '..servername..' --remote-expr "getcwd()"')
 	end
@@ -403,8 +538,8 @@ function dbg.console(msg, stackoffset)
 
 	local event
 	while true do
-		io.write("[DEBUG"..dbg._consoleLevel.."] > ")
-		line=io.read('*line')
+		local cursor="[DEBUG"..dbg._consoleLevel.."] > "
+		line=dbg.readLine(cursor)
 		local cmd=at(line,1)
 		local cmd_arg=tonumber(string.sub(line,2))
 		if not (string.sub(line,2)=="" or cmd_arg) then
@@ -427,24 +562,16 @@ function dbg.console(msg, stackoffset)
 			print('c[level=2]       : show nearby lines (at callstack level 2) here')
 			print('l[level=0]       : print local variables. Results are saved into \'l variable.')
 			print("                   e.g) DEBUG]>print('l.self.mVec)")
+			print('clist 		: list luna classes')
+			print('clist className  : list functions in the class')
 			print('cont             : exit debug mode')
 			print('lua global variable     : Simply typing "a" print the content of a global variable "a".')
 			print('lua local variable     : Simply typing "`a" print the content of a local variable "a".')
 			print('lua statement    : run it')
 		elseif line=="cont" then break
 		elseif string.sub(line,1,2)=="cs" then dbg.callstack(tonumber(string.sub(line,3)) or 3)
-		elseif cmd=="v" then
-			local info=debug.getinfo((cmd_arg or 1)+stackoffset)
-			if info and info.source=="=(tail call)" then
-				info=debug.getinfo((cmd_arg or 1)+2+stackoffset)
-			end
-			if info then
-				--os.vi_line(string.sub(info.source,2), info.currentline)
-				local fn=string.sub(info.source,2)
-				fn=os.relativeToAbsolutePath(fn)
-				fn=os.absoluteToRelativePath(fn, os.relativeToAbsolutePath("../.."))
-				os.luaExecute([[os.vi_line("]]..fn..[[",]]..info.currentline..[[)]])
-			end
+		elseif line=="clist" or string.sub(line,1,6)=='clist ' then
+			dbg.listLunaClasses(line)		
 		elseif cmd=="c" then
 			local level=(cmd_arg or 1)+stackoffset-1 -- -1 means 'excluding dbg.showCode'
 			local info=debug.getinfo(level)
@@ -461,10 +588,24 @@ function dbg.console(msg, stackoffset)
 			else
 				print('no such level')
 			end
-		elseif cmd=="e" then
-			local info=debug.getinfo((cmd_arg or 1)+1+stackoffset)
+		elseif cmd=="v" then
+			local info=debug.getinfo((cmd_arg or 1)+stackoffset-1)
+			if info and info.source=="=(tail call)" then
+				info=debug.getinfo((cmd_arg or 1)+stackoffset)
+			end
 			if info then
-			   os.emacs_client(os.relativeToAbsolutePath(string.sub(info.source,2)),info.currentline)
+				--os.vi_line(string.sub(info.source,2), info.currentline)
+				local fn=string.sub(info.source,2)
+				fn=os.relativeToAbsolutePath(fn)
+				--fn=os.absoluteToRelativePath(fn, os.relativeToAbsolutePath("../.."))
+				--os.luaExecute([[os.vi_line("]]..fn..[[",]]..info.currentline..[[)]])
+				os.vi_line(fn,info.currentline)
+			end
+		elseif cmd=="e" then
+			local info=debug.getinfo((cmd_arg or 1)+stackoffset-1)
+			if info then
+			   --os.emacs_client(os.relativeToAbsolutePath(string.sub(info.source,2)),info.currentline)
+			   os.execute(os.gedit_cmd(os.relativeToAbsolutePath(string.sub(info.source,2)),info.currentline)..'&')
 			end
 		elseif cmd==";" then
 			handleStatement(string.sub(line,2))

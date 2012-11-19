@@ -12,7 +12,7 @@ end
 function os.rename(name1, name2)
 
    if os.isUnix() then
-      os.execute("mv "..name1.." "..name2)
+      os.execute('mv "'..name1..'" "'..name2..'"')
    else
       local cmd=string.gsub("move "..name1.." "..name2, '/', '\\')
       print(cmd)
@@ -37,11 +37,11 @@ function os.relativeToAbsolutePath(folder,currDir)
 
 	if string.sub(folder, 1,1)~="/" then
 		currDir=currDir or os.currentDirectory()
-		while(string.sub(folder,1,2)=="..") do
+		while(string.sub(folder,1,3)=="../") do
 			currDir=os.parentDir(currDir)
 			folder=string.sub(folder,4)
 		end
-		while(string.sub(folder,1,1)==".") do
+		while(string.sub(folder,1,2)=="./") do
 			folder=string.sub(folder,3)
 		end
 		if folder=="" then
@@ -53,7 +53,7 @@ function os.relativeToAbsolutePath(folder,currDir)
 	return folder
 end
 function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file name
-	assert(string.sub(folder,1,1)=="/")
+	if(string.sub(folder,1,1)~="/") then return folder end
 	currDir=currDir or os.currentDirectory()
 	local n_ddot=0
 	while string.sub(folder,1,#currDir)~=currDir or currDir=="" do
@@ -64,7 +64,7 @@ function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file na
 	for i=1,n_ddot do
 		str=str.."../"
 	end
-	print(n_ddot, currDir)
+	--print(n_ddot, currDir)
 	str=str..string.sub(folder,#currDir+2)
 	return string.trimSpaces(str)
 end
@@ -78,7 +78,7 @@ function os.currentDirectory()
 end
 function os.copyFile(mask, mask2)
 
-   if os.isUnix() then
+   if os.isUnix() or os.isMsysgit() then
 	   if mask2 then
 		   os.execute('cp "'..mask..'" "'..mask2..'"')
 	   else
@@ -146,7 +146,9 @@ function os.copyFiles(src, dest, ext) -- copy source files to destination folder
 end
 
 function os._globWin32(attr, mask, ignorepattern)
-	local tbl=string.tokenize(os.capture("dir /b/a:"..attr.." "..string.gsub(mask, "/", "\\").." 2>nul", true), "\n")
+	local cmd="dir /b/a:"..attr..' "'..string.gsub(mask, "/", "\\")..'" 2>nul'
+	local cap=os.capture(cmd, true)
+	local tbl=string.tokenize(cap, "\n")
 	tbl[table.getn(tbl)]=nil
 	local files={}
 	local c=1
@@ -276,7 +278,13 @@ function os.find(mask, bRecurse, nomessage, printFunc)
 	else
 		local folder, lmask=os._processMask(mask)
 		local out=os._globWin32("-d", folder..lmask)
-		local acceptedExt=os.globParam.acceptedExt
+		local acceptedExt=deepCopyTable(os.globParam.acceptedExt)
+
+		if string.find(mask,"%*%.") then
+			local idx=string.find(mask,"%*%.")+2
+			acceptedExt[#acceptedExt+1]="%."..string.sub(mask,idx)..'$'
+			--print(acceptedExt[#acceptedExt])
+		end
 		for i=1, table.getn(out) do
 			if string.isMatched(out[i], acceptedExt) then
 				printFunc:iterate(folder..out[i])
@@ -316,6 +324,7 @@ function os.home_path()
 		return os.capture("echo %HOMEDRIVE%")..os.capture("echo %HOMEPATH%")
 	end
 end
+-- returns filename, path
 function os.processFileName(target)-- fullpath
 	local target=string.gsub(target, '\\', '/')
 	local lastSep
@@ -329,7 +338,7 @@ function os.processFileName(target)-- fullpath
 	local path=string.sub(target, 0, lastSep-1)
 
 	local filename
-	if lastSep==0 then filename=string.sub(target,lastSep) else filename=string.sub(target, lastSep+1) end
+	if lastSep==0 then filename=string.sub(target,lastSep) path='' else filename=string.sub(target, lastSep+1) end
 
 	return filename, path
 end
