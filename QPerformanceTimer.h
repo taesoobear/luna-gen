@@ -219,7 +219,7 @@ public:
 #ifdef USE_GETTIMEOFDAY 
 		double errorCorrection=0.4;
 #else
-		double errorCorrection=0;
+		double errorCorrection=-0.3;
 #endif
 		printf("Profiling %s finished: %s %gms, %s %gms, profiling overhead %gms, total time %gms\n", msg, insideName, inside-overhead-overhead*errorCorrection, outsideName, outside-overhead-overhead*errorCorrection, overhead*2, inside+outside-overhead*errorCorrection*2);
 		// init without measuring
