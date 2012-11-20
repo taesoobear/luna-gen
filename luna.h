@@ -331,7 +331,7 @@ class lunaStack
 
 	inline void _incr(){
 		currArg+=delta;
-		if (delta==-1) lua_pop(L,1);
+		if (delta==0) lua_pop(L,1);
 	}
 
 	// retrieve (or pop)

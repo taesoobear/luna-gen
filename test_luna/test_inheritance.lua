@@ -36,7 +36,7 @@ bindTarget={
 						double out;
 						l>>out;
 						printf("cpp notified back: %f\n", out);
-						//printf("stack after notify() call: "); luna_printStack(_L,true);
+						printf("stack after notify() call: "); luna_printStack(_L,true);
 						return int(out);
 					}
 				else {
@@ -115,6 +115,9 @@ function generate()
 	d:foo()
 	d.k=3  
 	print(d.k)
+	function getD()
+		return d
+	end
 	]]
 	write[[
 	void test_main(lua_State* L)
@@ -133,6 +136,20 @@ function generate()
 			  for (i=g_obj.begin();i!=g_obj.end(); ++i){
 				  (*i)->notify();
 			  }
+
+			  
+			 
+			// now let's try to get pointer directly from lua code.
+			printf("test3-------------------------\n");
+			lunaStack out(L);
+			printf("stack before getD call: "); out.printStack();
+			out.getglobal("getD");
+			out.call(0,1);
+			printf("stack before checking the result of getD call: "); out.printStack();
+			ParentCPP* d=out.check<ParentCPP>();
+			printf("stack after checking the result of getD call: "); out.printStack();
+			d->notify();
+			printf("stack after notify call: "); out.printStack();
 	  ]])
 	write("}")
 	flushWritten(input_filepath..'/generated/'..string.sub(input_filename,1,-4)..'cpp')
