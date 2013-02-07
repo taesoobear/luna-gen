@@ -306,10 +306,10 @@ class lunaStack
 	lunaStack():L(NULL){} // setCheck is necessary before use.
 	lunaStack(lua_State* l, bool upward=true):L(l){
 		if (upward){
-			// useful for retrieving function argument. Retreieving doesn't remove elements from stack
+			// useful for retrieving function argument. Retreieving (operator>>) doesn't remove elements from stack
 			setCheckFromBottom();
 		} else {
-			// useful for retrieving function call results. Retrieving pops elements from stack
+			// Retrieving (operator>>) pops elements from stack
 			setCheckFromTop();
 		}
 	}
@@ -411,27 +411,21 @@ class lunaStack
 		lua_pop(L,1); // pop-out prev table
 	}
 	
-	// linear search
-	inline int arraySize(int tblindex)
-	{
-		if (tblindex==-1) tblindex=gettop();
-		for (int i=1; 1; i++){
-			gettable(tblindex,i);
-			if(lua_isnil(L,-1))
-			{
-				lua_pop(L,1);
-				return i-1;
-			}
-			lua_pop(L,1);
-			//luna_printStack(L, true);
-		}
-	}
-
 	// assuming stack[-1-numIn]==function. (stack: function -> arg1 -> arg2 -> arg_numIn )
 	inline void call(int numIn, int numOut){
 		lua_call(L, numIn, numOut);
-		setCheckFromTop(); // prepare to read-out results 
+		// prepare to read-out results in reverse order
+		setCheckFromTop(); 
 	}
+	// usage:
+	// l.getglobal("functionName")
+	// l << param1 << param2 << param3;
+	// int numOut=l.beginCall(3);
+	// l >> ret1 >> ret2;
+	// l.endCall(numOut); // cleans the stack
+	
+	int beginCall(int numIn);
+	void endCall(int numOut);
 
 	template <class T> T* get(const char* key, int table_index=LUA_GLOBALSINDEX){
 		//luna_printStack(L);
@@ -454,6 +448,11 @@ class lunaStack
 		lua_settable(L, table_index);
 	}
 
+	// linear search. returns #tbl
+	int arraySize(int tblindex);
+	// a={{"a","b"}, "c"} -> treeSize of (a)=5 : ( Root, LeftInternalNode, "a", "b", "c")
+	//									   where Root=a, LeftInternalNode={"a","b"}
+	int treeSize(int tblindex);
 };
 
 class luna_wrap_object // inherit this object to enable inheritance from lua
