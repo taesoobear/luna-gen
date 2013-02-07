@@ -1,6 +1,8 @@
 script_path=string.sub(arg[0],1,-14)
 package.path=script_path.."/?.lua;"..package.path
 require('mylib')
+source_file_name,source_path=os.processFileName(arg[1])
+if source_path=='' then source_path='.' end
 
 do -- user configurations : all these can be changed in input file or from command line argument.
 	verbosecpp=true  -- easy for debugging cpp compilation error
@@ -963,7 +965,14 @@ function buildDefinitionDB(...)
 					luaclass.wrapperCode=luaclass.wrapperCode..wc..'\n'
 					array.pushBack(luaclass.staticMemberFunctions,dc..'\n')
 				elseif isStringType(cp) then
-					lgerror('property implementation not finished (string type is not supported yet). You can manually define properties using read_properties and write_properties instead.')
+					array.pushBack(luaclass.write_properties,{luaname or cp.n,'_property_set_'..cp.n})
+					local cppclass_name=normalizedClassNameToClassName(luaclass.className)
+					local dc='static '..cp.t..' _property_get_'..cp.n..'('..cppclass_name..' const& a)'
+					local wc='inline '..dc..' { return a.'..cp.n..'; }'
+					local dc2='static void _property_set_'..cp.n..'('..cppclass_name..' & a, '..cp.t..' b)'
+					local wc2='inline '..dc2..'{ a.'..cp.n..'=b;}'
+					luaclass.wrapperCode=luaclass.wrapperCode..wc..wc2..'\n'
+					array.pushBack(luaclass.staticMemberFunctions,dc..'\n'..dc2..'\n')
 				else
 					array.pushBack(luaclass.write_properties,{luaname or cp.n,'_property_set_'..cp.n})
 					local cppclass_name=normalizedClassNameToClassName(luaclass.className)

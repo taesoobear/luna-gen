@@ -1,36 +1,23 @@
+--gen_lua.use_profiler=true -- uses performance profiler. See test_profiler sample.
 array.pushBack(gen_lua.number_types, 'm_real') -- m_real is a type-def of double.
-array.pushBack(gen_lua.enum_types, 'bitvectorn::zeroCrossingMode')
+array.pushBack(gen_lua.enum_types, 'boolN::zeroCrossingMode')
 array.pushBack(gen_lua.enum_types, 'uchar')
--- this top-level definition file is supposed to contain all the classes to be exported to lua.
--- Or, at least, all inherited classes should be defined in the same file with it's parent class
--- (Though, of couse, you can use "dofile" or "require" in this file. )
--- output can be seperated into multiple cpp files so that C++ compilation time is reduced.
--- ; see "generate" function below.
-
--- Detailed explanation: Q. what happen if not?
--- A. Lunagen assign a unique integer for 
--- each class, and uses it for type-checking and function-overloading.
--- And the unique type-id might not unique across multiple input files if they don't share the same top-level definition file (= this file).
--- if you want to use multiple input files for luna-gen,
--- consider using "dofile" or "require" in a single main input file.
--- If this constraints is not satisfied, generated code might work incorrectly (though unlikely in most cases).
-
-
 -- snippets for luabind users:
 -- luabind -> lunagen
 
---[[
+--[[ luabind:
 luabind::def("createVRMLskin", &RE::createVRMLskin,luabind::adopt(luabind::result))
--> 
+-> luna-gen:
 PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adopt=true; 
 
 
+luabind:
 		.enum_("constants")
 		[
 			luabind::value("EULER",OpenHRP::DynamicsSimulator::EULER),
 			luabind::value("RUNGE_KUTTA",OpenHRP::DynamicsSimulator::RUNGE_KUTTA)
 		]
-->
+-> luna-gen:
 
 		.scope_[..] -> staticMemberFunctions={...}
 
@@ -39,34 +26,53 @@ PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adop
 		#endif
 		->
 		void abc() @ ;ifndef=AAA;
- 
 ]]--
 bindTarget={
 	classes={
 		{
-			name='math.NonuniformSpline',
-			className='NonuniformSpline',
-			ctors={'(vectorn const&, const matrixn&)'},
+			name='util.PerfTimer2',
+			className='QPerformanceTimerCount2',
+			ctors={'()'},
 			memberFunctions={[[
-	void getCurve(vectorn const& time, matrixn& points);
-	void getFirstDeriv(vectorn const& time, matrixn& points);
-	void getSecondDeriv(vectorn const& time, matrixn& points);
-]]}
+			void reset()
+			void start()
+			void pause()
+			long stop()
+			]]}
+		},
+		{
+			name='util.FractionTimer',
+			className='FractionTimer',
+			ctors={'()'},
+			staticMemberFunctions={[[
+			static void FractionTimer::init()
+			static double FractionTimer::stopOutside()
+			static double FractionTimer::stopInside()
+			]]}
 		},
 		{
 			name='boolN',
 			ctors={'()','(int n)'},
 			wrapperCode=[[
-				  static boolNView _range(boolN const& a, int start, int end)
-				  {
-					  return boolNView (a._vec, a._start+start, a._start+end);
-				  }
+			  static boolNView _range(boolN const& a, int start, int end)
+			  {
+				  return boolNView (a._vec, a._start+start, a._start+end);
+			  }
 			  ]],
+			enums={
+				{"ZC_MIN", "(int)boolN::ZC_MIN"},
+				{"ZC_MAX", "(int)boolN::ZC_MAX"},
+				{"ZC_ALL", "(int)boolN::ZC_ALL"},
+			},
 			staticMemberFunctions={[[
 										   static boolNView _range(boolN const& a, int start, int end) @ range
 			  ]]},
+			  enums={
+				  {"ZC_MIN", "(int)boolN::ZC_MIN"},
+				  {"ZC_MAX", "(int)boolN::ZC_MAX"},
+				  {"ZC_ALL", "(int)boolN::ZC_ALL"},
+			  },
 			memberFunctions={[[
-									 bitvectorn bit() const
 									 void assign(const boolN& other)
 									 void assign(const boolN& other)
 									 void set(int i, bool b)
@@ -75,6 +81,8 @@ bindTarget={
 									 int size();
 									 TString output() @ __tostring
 									 bool operator[](int i) @ __call
+									 void findZeroCrossing(const vectorn& signal, boolN::zeroCrossingMode mode);
+									 void findLocalOptimum(const vectorn& signal, boolN::zeroCrossingMode mode);
 						 ]]}
 		},
 		{
@@ -223,27 +231,6 @@ bindTarget={
 			name='intmatrixn'
 		},
 		{
-			name='bitvectorn',
-			ctors={'()'},
-			memberFunctions={[[
-			void findLocalOptimum(const vectorn& signal, bitvectorn::zeroCrossingMode mode);
-			void findLocalOptimum(const vectorn& signal);
-			void setSize(int size);
-			int size() const;
-			void clearAll()							
-			void setAll();
-			void setValue(int nIndex, bool bit); @ set
-			bool getValue(int nIndex) const	; @ __call
-			void save(const char* filename);	
-			void load(int size, const char* filename);
-			]]},
-			enums={
-				{"ZC_MIN", "(int)bitvectorn::ZC_MIN"},
-				{"ZC_MAX", "(int)bitvectorn::ZC_MAX"},
-				{"ZC_ALL", "(int)bitvectorn::ZC_ALL"},
-			}
-		},
-		{
 			name='util.BinaryFile',
 			className='BinaryFile',
 			ctors={[[
@@ -251,34 +238,6 @@ bindTarget={
 						   (bool bReadToMemory)
 						   (bool bWrite, const char* filename)
 			   ]]},
-			wrapperCode=[[
-			static void pack(BinaryFile& file, boolN const& b)
-			{
-				bitvectorn bb=b.bit();
-				file.pack(bb);
-			}
-
-			static void unpack(BinaryFile& file, boolN & b)
-			{
-				bitvectorn bb;
-				file.unpack(bb);
-				b.assignBit(bb);
-			}
-			static void _unpackBit(BinaryFile& file, boolN & b)
-			{
-				bitvectorn bb;
-				file._unpackBit(bb);
-				b.assignBit(bb);
-			}
-
-	]],
-	staticMemberFunctions={
-		[[
-			static void pack(BinaryFile& file, boolN const& b)
-			static void unpack(BinaryFile& file, boolN & b)
-			static void _unpackBit(BinaryFile& file, boolN & b)
-		]]
-	},
 			memberFunctions={
 [[
 	bool openWrite(const char *fileName);
@@ -296,7 +255,7 @@ bindTarget={
 	void pack(const vector3N& mat);
 	void pack(const quaterN& mat);
 	void pack(const TStrings& aSz);
-	void pack(const bitvectorn& vec);
+	void pack(const boolN& vec);
 	void pack(const matrix4& mat);
 	int	unpackInt()	
 	double unpackFloat()	
@@ -308,7 +267,7 @@ bindTarget={
 	void unpack(matrixn& mat);
 	void unpack(intmatrixn& mat);
 	void unpack(TStrings& aSz);
-	void unpack(bitvectorn& vec);
+	void unpack(boolN& vec);
 	void unpack(quaterN& mat);
 	void unpack(vector3N& mat);
 	void unpack(matrix4& mat);
@@ -333,85 +292,6 @@ bindTarget={
 					{"TYPE_EOF", "(int)BinaryFile::TYPE_EOF"},
 				}
 			
-		},
-		{
-			name='LMat',
-			ctors=
-			{
-				[[
-				()
-				(int,int)
-				(LMat const& other)
-				]]
-			},
-			wrapperCode=
-			[[
-			static int setValues(lua_State* L)
-			{
-				LMat& self=*luna_t::check(L,1);
-				int n=lua_gettop(L)-1;
-				if (n!=self.cols()*self.rows()) luaL_error(L, "setValues(nrows, ncols, values...)");
-				int c=2;
-				for (int i=1;i<=self.rows(); i++)
-					for (int j=1;j<=self.cols(); j++)
-						self(i,j)=lua_tonumber(L,c++);
-				return 0;
-			}
-			]],
-			staticMemberFunctions=
-			{
-				[[
-				LMat operator*(double a, LMat const& b)
-				void LMat_lapack::balance(LMat& a, LMat& dd,LVec& p,LVec& s); @ balance
-				]]
-			},
-			memberFunctions=
-			{
-				[[
-				void setSize(int, int);
-				void resize(int, int); 
-				bool isReference() const;
-				void assign(LMat const&);
-				void invert(LMat const&);
-				void setDiagonal(double value);
-				void setDiagonal(const LVec& );
-				void getDiagonal(LVec& );
-				int	rows()  const;
-				int	cols() const;
-				double operator()(int i, int j) const
-				inline void set(int i, int j, double d)	
-				void set(LVec const& i, LVec const& j, LMat const& a)
-				void setAll(double d);
-				LVecView row(int i)const;
-				LVecView column(int i)const	;
-				LMatView sub(int startRow, int endRow, int startColumn, int endColumn);
-				void transpose(LMat const& from)
-				LMat T() const
-				void radd(LMat const& a)
-				void radd(LMat const& a, double alpha);
-				void add(LMat const& a, LMat const& b);
-				void add(LMat const& a, LMat const& b, double beta);
-				inline void rsub(LMat const& a) 
-				void div(LMat const& a, double b);
-				void mult(LMat const& a, double b);
-				void mult(LMat const& a, const char* opA, LMat const& b, const char* opB, double alpha, double beta);
-				void mult(LMat const& a, const char* opA, LMat const& b, const char* opB, double alpha);
-				void mult(LMat const& a, const char* opA, LMat const& b, const char* opB);
-				void mldiv(const LMat & A, const LMat& B);
-				void mrdiv(const LMat & A, const LMat& B);
-				LMat operator*(LMat const& b) // operators will be automatically renamed. (__mul, __add, etc)
-				LMat operator+(LMat const& b)
-				LMat operator-(LMat const& b)
-				LMat operator/(LMat const& b) const
-				LMat operator%(LMat const& b) const
-				LMat operator*(double b)
-				LMat operator/(double b)
-				LMat operator-()		
-				void operator*=(double b)
-				]],
-				{"TString output() const;", rename='__tostring'}
-			},
-			customFunctionsToRegister ={'setValues'}
 		},
 		{
 			name='transf',
@@ -463,80 +343,6 @@ bindTarget={
 			},
 		},
 		{
-			name='LMatView', inheritsFrom='LMat',
-			ctors={
-				[[
-				(const LMat& other)
-				(const LMatView& other)
-				]]
-			},
-		},
-		{
-			name='LVec',
-			ctors={
-				[[
-				();
-				(int)
-				(const LVec& other);
-				(const LVecView& other);
-				]]
-			},
-			wrapperCode=
-			[[
-			static int setValues(lua_State* L)
-			{
-				LVec& self=*luna_t::check(L,1);
-				int n=lua_gettop(L)-1;
-				self.setSize(n);
-				for (int i=1;i<=n; i++)
-					self(i)=lua_tonumber(L,i+1);
-				return 0;
-			}
-			]],
-			memberFunctions=
-			{
-				[[
-				bool isReference() const
-				LVecView sub(int start, int end);
-				LMatView column() const;
-				LMatView row() const;
-				TString output() const; @ __tostring
-				void setAll(double d)
-				void set(int i, double d)
-				void set(LVec const& i, LVec const& a)
-				void assign(const LVec& other);
-				double   operator()(int i) const
-				int  size() const
-				void setSize( int );
-				void resize(int nsize);
-				void reserve( int rr)
-				void swap(int i, int j)
-				void pushBack(double x)
-				void pushFront(double x);
-				double popFront();
-				double popBack();
-				double back() const	
-				void add( LVec const&, LVec const& );
-				void add( double a, LVec const& b);
-				void add( LVec const& a, double b);
-				void sub( LVec const&, LVec const& );
-				void sub( double a, LVec const& b);
-				void sub( LVec const& a, double b);
-				void mult( LVec const&, double );
-				void mult( LVec const& a, LVec const& b);
-				void div( LVec const& a, double b)			
-				void div( LVec const& a, LVec const& b);
-				void multAdd(const LVec& a, const LVec& b) ;
-				void multAdd(const LVec& a, double b) ;
-				void concat(LVec const& a, LVec const& b);
-				]]
-			},
-			customFunctionsToRegister ={'setValues'}
-		},
-		{
-			name='LVecView', inheritsFrom='LVec',
-		},
-		{
 			name='vector3N',
 			ctors=
 			{
@@ -551,6 +357,7 @@ bindTarget={
 						int size() const
 						void setSize(int)
 						void resize(int)
+						void reserve(int)
 						vector3NView range(int,int)
 						vector3NView range(int,int,int)
 						void assign(vector3N const&)
@@ -624,6 +431,7 @@ bindTarget={
 						int size() const
 						void setSize(int)
 						void resize(int)
+						void reserve(int)
 						quaterNView range(int,int)
 						quaterNView range(int,int,int)
 						void assign(quaterN const&)
@@ -677,6 +485,36 @@ bindTarget={
 			},
 		},
 		{
+			name='intIntervals',
+			decl=[[#include "../../BaseLib/math/intervals.h"]],
+			ctors={'()'},
+			memberFunctions={
+				[[
+					int numInterval() const
+					int size() const	
+					void setSize(int n)	
+					void resize(int n)
+					void removeInterval(int i);
+					int start(int iInterval) const	 @ startI
+					int end(int iInterval) const @ endI
+					void load(const char* filename);
+					void pushBack(int start, int end)
+					int findOverlap(int start, int end, int startInterval);
+					int findOverlap(int start, int end);
+					void runLengthEncode(const boolN& source)
+					void runLengthEncode(const boolN& source , int start, int end);
+					void runLengthEncode(const intvectorn& source);
+					void findConsecutiveIntervals(const intvectorn& source);
+					void runLengthEncodeCut(const boolN& cutState);
+					void encodeIntoVector(intvectorn& out);
+					void decodeFromVector(const intvectorn& in);
+					void offset(int offset);
+					void toBitvector(boolN& bitVector);
+					void runLengthEncode( const boolN& source)
+				]],
+			},
+		},
+		{
 			name='quaterNView', inheritsFrom='quaterN',
 		},
 		{
@@ -726,6 +564,28 @@ bindTarget={
 				{
 					return a*b;
 				}
+				inline static void clamp(vectorn &cc, double a, double b){
+					for (int i=0; i<cc.size(); i++)
+					{
+						double c=cc[i];
+						c=(c<a)?a:c;
+						c=(c>b)?b:c;
+						cc[i]=c;
+					}
+				}
+				inline static void clamp(vectorn &cc, vectorn const& aa, vectorn const&bb){
+					assert(aa.size()==bb.size());
+					assert(aa.size()==cc.size());
+					for (int i=0; i<cc.size(); i++)
+					{
+						double c=cc[i];
+						double a=aa[i];
+						double b=bb[i];
+						c=(c<a)?a:c;
+						c=(c>b)?b:c;
+						cc[i]=c;
+					}
+				}
 			]],
 			staticMemberFunctions=
 			{
@@ -737,6 +597,8 @@ bindTarget={
 				void rdiv(vectorn & a, m_real b);
 				void rmult(vectorn & a, m_real b);
 				void rmult(vectorn & a, vectorn const&b);
+				void clamp(vectorn &cc, double a, double b);
+				void clamp(vectorn &cc, vectorn const& a, vectorn const& b);
 				void setAllValue(vectorn & a, m_real b) ;
 				void radd(vectorn & a, vectorn const& b);
 				void rsub(vectorn & a, vectorn const& b);
@@ -788,6 +650,9 @@ bindTarget={
 				m_real sum()	const;
 				m_real squareSum() const;
 				m_real avg() const;
+				void minimum(const matrixn& other) 
+				void maximum(const matrixn& other) 
+				void lengths(matrixn const& in)    
 				int argMin() const
 				int argMax() const
 				int argNearest(double) const;
@@ -800,6 +665,9 @@ bindTarget={
 				matrixnView column() const;	// return n by 1 matrix, which can be used as L-value (reference matrix)
 				matrixnView row() const;	// return 1 by n matrix, which can be used as L-value (reference matrix)
 				
+				void minimum(const matrixn& other)
+				void maximum(const matrixn& other)
+				void lengths(matrixn const& in)   
 				]]
 			},
 			customFunctionsToRegister ={'setValues'},
@@ -909,6 +777,8 @@ static matrix4 inverse(matrix4 const& m)
 				vector3 operator*(vector3 const& a) const;
 				matrix4 operator+(matrix4 const& a) const 
 				matrix4 operator-(matrix4 const& a) const
+				matrix4 operator=(matrix4 const& b) const
+				void operator*=(double b) 
 				]]
 			},
 		},
@@ -960,23 +830,14 @@ static matrix4 inverse(matrix4 const& m)
 			inline static void radd(matrixn & a, matrixn const& b)	{a+=b;}
 			inline static void rsub(matrixn & a, matrixn const& b)	{a-=b;}
 
-			inline static void draw(matrixn& mat, const char* filename) {mat.op0(m0::draw(filename));}
-			inline static void draw2(matrixn& mat, const char* filename, float fMin, float fMax)
-			{mat.op0(m0::draw(filename, fMin, fMax));}
 			inline static void pushBack(matrixn& mat, const vectorn& v) { mat.pushBack(v);}
 
-      static void drawSignals(matrixn & in, const char* filename,  bool useTheSameMinMax)
-      {
-	m0::drawSignals(filename,useTheSameMinMax).calc(in);
-      }
 			inline static void transpose(matrixn& a)
 			{
 				matrixn c;
 				c.transpose(a);
 				a=c;
 			}
-
-
 			inline static void sampleRow(matrixn const& in, m_real criticalTime, vectorn& out){
 				out.setSize(in.cols());
 				//!< 0 <=criticalTime<= numFrames()-1
@@ -993,13 +854,15 @@ static matrix4 inverse(matrix4 const& m)
 					out=in.row(a+1);
 				else {
 					if(a<0)
-						v2::interpolate(t-1.0).calc(out, in.row(a+1), in.row(a+2));
+						v::interpolate(out, t-1.0, in.row(a+1), in.row(a+2));
 					else if(a+1>=in.rows())
-						v2::interpolate(t+1.0).calc(out, in.row(a-1), in.row(a));
+						v::interpolate(out, t+1.0, in.row(a-1), in.row(a));
 					else
-						v2::interpolate(t).calc(out, in.row(a), in.row(a+1));
+						v::interpolate(out, t, in.row(a), in.row(a+1));
 					}
 				}
+
+
 				]]
 				,staticMemberFunctions=
 				{
@@ -1017,15 +880,13 @@ static matrix4 inverse(matrix4 const& m)
 					static void setAllValue(matrixn & a, m_real b) 
 					static void radd(matrixn & a, matrixn const& b)	
 					static void rsub(matrixn & a, matrixn const& b)	
-					static void draw(matrixn& mat, const char* filename) 
-					static void draw2(matrixn& mat, const char* filename, float fMin, float fMax) @ draw
 					static void pushBack(matrixn& mat, const vectorn& v) 
 					static void transpose(matrixn& a)
 					static void sampleRow(matrixn const& in, m_real criticalTime, vectorn& out)
-					static void drawSignals(matrixn & in, const char* filename,  bool useTheSameMinMax)
 					vector3NView vec3ViewCol(matrixn const& a, int startCol)
 					quaterNView quatViewCol(matrixn const& a, int startCol)
-					void sampleRow(matrixn const& in, m_real criticalTime, vectorn& out)
+					void m::LUinvert(matrixn& out, const matrixn& in); @ inverse
+					void m::pseudoInverse(matrixn& out, const matrixn& in); @ pseudoInverse
 					]]
 				},
 				memberFunctions=
@@ -1041,7 +902,6 @@ static matrix4 inverse(matrix4 const& m)
 							vectornView		diag() const		
 							void transpose(matrixn const& o)
 							void assign(matrixn const& o)
-							void pseudoInverse(matrixn const&)
 							void setSize(int, int)
 							void resize(int, int)
 							TString output() @ __tostring
@@ -1051,7 +911,6 @@ static matrix4 inverse(matrix4 const& m)
 							double maximum()
 							double sum()
 							void pushBack(vectorn const& o)
-							void inverse(matrixn const& )
 							void mult( matrixn const&, matrixn const& );
 							void multABt(matrixn const& a, matrixn const& b); //!< a*b^T
 							void multAtB(matrixn const& a, matrixn const& b); //!< a^T*b
@@ -1262,9 +1121,48 @@ static matrix4 inverse(matrix4 const& m)
 					namespace='_G' -- global
 				},
 				{
+					namespace='Imp',
+					enums={
+						{"LINE_CHART", "(int)Imp::LINE_CHART"},
+						{"BAR_CHART", "(int)Imp::BAR_CHART"},
+					},
+					functions={[[
+					CImage* Imp::DrawChart(const vectorn& vector, int chart_type);
+					CImage* Imp::DrawChart(const matrixn& matrix, int chart_type);
+					void Imp::ChangeChartPrecision(int precision);
+					void Imp::DefaultPrecision();
+					]]}
+				},
+				{
 					namespace='util',
+					decl=[[
+					#include <stdio.h>
+					#include <termios.h>
+					#include <unistd.h>
+					]],
+					wrapperCode=[[
+					 
+					static int getch( ) {
+					  struct termios oldt,
+									 newt;
+					  int            ch;
+					  tcgetattr( STDIN_FILENO, &oldt );
+					  newt = oldt;
+					  newt.c_lflag &= ~( ICANON | ECHO );
+					  tcsetattr( STDIN_FILENO, TCSANOW, &newt );
+					  ch = getchar();
+					  tcsetattr( STDIN_FILENO, TCSANOW, &oldt );
+					  return ch;
+					}
+					static void putch(const char* str ) {
+						printf("%s",str);
+						fflush(stdout);
+					}
+					]],
 					functions ={[[
 									  void OutputToFile(const char* filename, const char* string); @ outputToFile
+									  int getch( ) 
+									  void putch(const char* str)
 						  ]]}
 				},
 				{
@@ -1281,67 +1179,61 @@ static matrix4 inverse(matrix4 const& m)
 						lua_pushnumber(L,e);
 						return 2;
 					}
-			static void filter(matrixn &c, int kernelSize)
-			{
-				vectorn kernel;
-				Filter::GetGaussFilter(kernelSize, kernel);
-				Filter::LTIFilter(1,kernel, c); 
-			}
-			static void filterQuat(matrixn &c, int kernelSize)
-			{
-				vectorn kernel;
-				Filter::GetGaussFilter(kernelSize, kernel);
-				Filter::LTIFilterQuat(1,kernel, c); 
-			}
+						static void filter(matrixn &c, int kernelSize)
+					{
+						vectorn kernel;
+						Filter::GetGaussFilter(kernelSize, kernel);
+						Filter::LTIFilter(1,kernel, c); 
+					}
+					static void filterQuat(matrixn &c, int kernelSize)
+					{
+						vectorn kernel;
+						Filter::GetGaussFilter(kernelSize, kernel);
+						Filter::LTIFilterQuat(1,kernel, c); 
+					}
 
-			static void drawSignals(const char* filename, matrixn & in)
-			{
-				intvectorn temp;
-				m0::drawSignals a(filename,0,0,true, temp);
-				a.calc(in);
-			}
-			static void changeChartPrecision(int precision)
-			{
-				Imp::ChangeChartPrecision(precision);
-			}
+					static void changeChartPrecision(int precision)
+					{
+						Imp::ChangeChartPrecision(precision);
+					}
 
-			static void defaultPrecision()
-			{
-				Imp::DefaultPrecision();
-			}
+					static void defaultPrecision()
+					{
+						Imp::DefaultPrecision();
+					}
 
-			static void projectAngle(m_real& delta)	// represent angle in [-pi, pi]
-			{	
-				while(delta>M_PI+FERR)
-					delta-=2.0*M_PI;
-				while(delta<-1.0*M_PI-FERR)
-					delta+=2.0*M_PI;
-			}
+					static void projectAngle(m_real& delta)	// represent angle in [-pi, pi]
+					{	
+						while(delta>M_PI+FERR)
+							delta-=2.0*M_PI;
+						while(delta<-1.0*M_PI-FERR)
+							delta+=2.0*M_PI;
+					}
 
-			static void alignAngle(m_real prev, m_real& next)
-			{
+					static void alignAngle(m_real prev, m_real& next)
+					{
 
-				// next-prev는 [-PI,PI]에 있다고 보장을 못한다. 따라서 이범위에 들어오는 next-prev를 구한다.
+						// next-prev는 [-PI,PI]에 있다고 보장을 못한다. 따라서 이범위에 들어오는 next-prev를 구한다.
 
-				m_real delta=next-prev;
+						m_real delta=next-prev;
 
-				projectAngle(delta);
+						projectAngle(delta);
 
-				// 다시 원래의 prev범위로 되돌린다.
-				next=prev+delta;
-			}
-			static void alignAngles(vectorn & value, m_real x=0)
-			{
-				alignAngle(x, value(0));
-				for(int i=1; i<value.size(); i++)
-					alignAngle(value(i-1), value(i));
-			}
+						// 다시 원래의 prev범위로 되돌린다.
+						next=prev+delta;
+					}
+					static void alignAngles(vectorn & value, m_real x=0)
+					{
+						alignAngle(x, value(0));
+						for(int i=1; i<value.size(); i++)
+							alignAngle(value(i-1), value(i));
+					}
 
-			static void _throwTest()
-			{
-				throw std::runtime_error("_throwTest");
+					static void _throwTest()
+					{
+						throw std::runtime_error("_throwTest");
 
-			}
+					}
 					]],
 					customFunctionsToRegister ={'frexp'},
 					functions=
@@ -1351,17 +1243,13 @@ static matrix4 inverse(matrix4 const& m)
 						{'void Filter::gaussFilter(int kernelsize, vectorn& inout);',rename='gaussFilter'},
 						{'int Filter::CalcKernelSize(float time, float frameTime);',rename='calcKernelSize'},
 						[[
-			static void filter(matrixn &c, int kernelSize)
-			static void filterQuat(matrixn &c, int kernelSize)
-			static void drawSignals(const char* filename, matrixn & in)
-			static void changeChartPrecision(int precision)
-			static void defaultPrecision()
-			static void alignAngles(vectorn & value, m_real x)
-			static void alignAngles(vectorn & value)
-			static void _throwTest()
-
-	void m::LUsolve(matrixn const & A, vectorn const& b, vectorn& x) @ LUsolve
-	void m::PIsolve(matrixn const & A, vectorn const& b, vectorn& x) @ PIsolve
+						static void filter(matrixn &c, int kernelSize)
+						static void filterQuat(matrixn &c, int kernelSize)
+						static void changeChartPrecision(int precision)
+						static void defaultPrecision()
+						static void alignAngles(vectorn & value, m_real x)
+						static void alignAngles(vectorn & value)
+						static void _throwTest()
 						]]
 					}
 
@@ -1396,18 +1284,11 @@ static matrix4 inverse(matrix4 const& m)
 		}
 
 				require('luna_mainlib')
-				require('luna_physics')
+				--			require('luna_physics')
 	-- namespaces can be defined here or using nested name (name='test.vector3') 
 	namespaces={
 		util={},
 		math={},
-		
-		-- test={
-		-- 	-- these are cpp class name, not lua class name, because lua name may not be unique. 
-		-- 	'TRect','CImage','intvectorn', 'intmatrixn','bitvectorn','TStrings', 'binaryFile', 'boolN','vector3','quater','vector3N','vector3NView','quaterN', 'quaterNView', 'vectorn','vectornView', 'matrixn', 'matrixnView','matrix3','matrix4','transf',
-		-- 	-- nested namespaces or namespaces containing any class have to be declared here too.
-		-- 	math={},
-		-- },
 		Ogre={}
 	}
 
@@ -1417,6 +1298,9 @@ static matrix4 inverse(matrix4 const& m)
 	function generateBaseLib()
 		-- declaration
 		write([[
+					class CPixelRGB8;
+					class TRect;
+					class CImage;
 					  class boolNView;
 					  class boolN;
 					  class NonuniformSpline;
@@ -1424,49 +1308,61 @@ static matrix4 inverse(matrix4 const& m)
 					  class LMatView;
 					  class LVec;
 					  class LVecView;
+					  class QPerformanceTimerCount2;
+					  class FractionTimer;
+					  class BSpline;
+					  class intIntervals;
 ]])
 		writeHeader(bindTarget)
-		flushWritten(	'generated/luna_baselib.h')
+		if gen_lua.use_profiler then
+			write('\n#define LUNA_GEN_PROFILER\n')
+		end
+		flushWritten(	source_path..'/generated/luna_baselib.h')
 		write(
 		[[
 		#include "stdafx.h"
-		#include "../BaseLib/utility/TWord.h"
+		//#include "../BaseLib/utility/TWord.h"
+		#include "../../BaseLib/motion/Motion.h"
+		#include "../../BaseLib/motion/MotionLoader.h"
 		#include "../MainLib/OgreFltk/MotionPanel.h"
 		#include "../BaseLib/image/Image.h"
 		#include "../BaseLib/image/ImageProcessor.h"
 		#include "../BaseLib/motion/MotionRetarget.h"
-		#include "../BaseLib/motion/Concat.h"
-		#include "../BaseLib/motion/MotionUtilSkeleton.h"
+		//#include "../BaseLib/motion/Concat.h"
+		//#include "../BaseLib/motion/MotionUtilSkeleton.h"
 		#include "../BaseLib/motion/MotionUtil.h"
 		#include "../BaseLib/motion/ConstraintMarking.h"
 		#include "../BaseLib/motion/postureip.h"
 		#include "../BaseLib/math/Operator.h"
-		#include "../BaseLib/math/GnuPlot.h"
+		#include "../BaseLib/math/Operator_NR.h"
+		#include "../../BaseLib/math/bitVectorN.h"
+		//#include "../BaseLib/math/GnuPlot.h"
 		#include "../BaseLib/math/conversion.h"
-		#include "../BaseLib/math/stransf.h"
+		//#include "../BaseLib/math/stransf.h"
 		#include "../BaseLib/math/Filter.h"
 		#include "../BaseLib/math/matrix3.h"
-		#include "../BaseLib/math/BSpline.h"
-		#include "../BaseLib/math/LMat.h"
-		#include "../BaseLib/math/LVec.h"
-		#include "../BaseLib/math/LMat_lapack.h"
+		//#include "../BaseLib/math/BSpline.h"
+		//#include "../BaseLib/math/LMat.h"
+		//#include "../BaseLib/math/LVec.h"
+		//#include "../BaseLib/math/LMat_lapack.h"
 		#include "../BaseLib/utility/operatorString.h"
 		#include "../BaseLib/utility/QPerformanceTimer.h"
 		#include "../BaseLib/utility/tfile.h"
-		#include "../BaseLib/math/GnuPlot.h"
-				#include "../MainLib/WrapperLua/BaselibLUA2.h"
+		//#include "../BaseLib/math/GnuPlot.h"
+		//		#include "../MainLib/WrapperLua/BaselibLUA2.h"
 				
 		]]
 		)
 		writeIncludeBlock(true)
 		write('#include "luna_baselib.h"')
 		writeDefinitions(bindTarget, 'Register_baselib') -- input bindTarget can be non-overlapping subset of entire bindTarget 
-		flushWritten('generated/luna_baselib.cpp') -- write to cpp file only when there exist modifications -> no-recompile.
+		flushWritten(source_path..'/generated/luna_baselib.cpp') -- write to cpp file only when there exist modifications -> no-recompile.
 	end
 	function generate() 
-		buildDefinitionDB(bindTarget, bindTargetMainLib, bindTargetPhysics) -- input has to contain all classes to be exported.
+		buildDefinitionDB(bindTarget, bindTargetMainLib)--, bindTargetPhysics) -- input has to contain all classes to be exported.
 		-- write function can be used liberally.
 		generateBaseLib()
 		generateMainLib()
-		generatePhysicsBind()
+		--generatePhysicsBind()
+		writeDefinitionDBtoFile(source_path..'/generated/luna_baselib_db.lua')
 	end

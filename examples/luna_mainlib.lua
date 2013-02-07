@@ -5,7 +5,30 @@ array.pushBack(gen_lua.number_types, 'uint')
 array.pushBack(gen_lua.number_types, 'Ogre::Real') 
 
 bindTargetMainLib={
+	namespaces={
+		MainLib={
+			'VRMLloader','VRMLloaderView'
+		}
+	},
 	classes={
+
+		{
+			name='SelectPanel',
+			decl='class FltkScrollSelectPanel;',
+			className='FltkScrollSelectPanel',
+			ifndef='NO_GUI',
+			ctors={'()'},
+			memberFunctions={[[
+			bool isCreated()	
+			void init(MotionPanel* pPanel, const char* label, int height, int maxValue);
+			void release(MotionPanel* pPanel);
+			void drawBoxColormap(int start, int end, int colormapValue);
+			void drawBox(int start, int end, CPixelRGB8  color);
+			void drawFrameLines(intvectorn const& frames);
+			void drawTextBox(int start, int end, int colormapValue, const char* text);
+			void clear(int start, int end);
+			]]}
+		},
 		{
 			name='EventReceiver',
 			className='EventReceiver_lunawrapper',
@@ -127,24 +150,16 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			className='std::vector<std::pair<double,double> >'
 		},
 		{
-			name='math.GrahamScan',
-			className='GrahamScan',
-			ctors={'()'},
-			memberFunctions={
-				[[
-				void add_point(std::pair<double, double> const& point);
-				void partition_points();
-				void build_hull();
-				void print_raw_points();
-				void print_hull();
-				void get_hull(matrixn& out);
-				]]
-			},
-			staticMemberFunctions={
-				[[
-				static double GrahamScan::direction( std::pair<double,double> p0, std::pair<double,double> p1, std::pair<double,double> p2 ); 
-				]]
-			},
+			name='MeshToEntity',
+			className='OBJloader::MeshToEntity',
+			ctors={'(const OBJloader::Mesh& mesh, const char* ogreMeshName)'},
+			memberFunctions={[[
+			void updatePositions();
+			void updatePositionsAndNormals();
+			Ogre::Entity* createEntity(const char* entityName);
+			Ogre::Entity* createEntity(const char* entityName, const char* materialName);
+			Ogre::Entity* getLastCreatedEntity() const
+			]] }
 		},
 		{
 			name='Mesh',
@@ -155,8 +170,10 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 				OBJloader::Face & getFace(int i)
 				int numVertex() const;
 				vector3& getVertex(int i);
-				bool saveObj(const char* filename, bool vn, bool vt);
-				bool loadObj(const char* filename);
+				bool saveObj(const char* filename, bool vn, bool vt); @ saveOBJ
+				bool loadObj(const char* filename); @ loadOBJ
+				void copyFrom(OBJloader::Mesh const& otherMesh); @ assign
+				void merge(OBJloader::Mesh const& a, OBJloader::Mesh const& b);
 				void transform(matrix4 const& b);
 			]]},
 			staticMemberFunctions={[[
@@ -166,45 +183,50 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 		},
 		{
 			name='__luna.worker',
-			className='OR::LUAWrap::Worker',
-wrapperCode=[[
-	static int __call(lua_State *L)
-	{
-		lunaStack lua(L);
-		OR::LUAWrap::Worker* self=lua.check<OR::LUAWrap::Worker>();
-		std::string workName;
-		lua>>workName;
+			className='LUAwrapper::Worker',
+				wrapperCode=[[
+					static int __call(lua_State *L)
+				{
+					lunaStack lua(L);
+					LUAwrapper::Worker* self=lua.check<LUAwrapper::Worker>();
+					std::string workName;
+					lua>>workName;
 
-		TString w(workName.c_str());
-		OR::LUAStack s(L);
-		s.mCurrArg=3;
-		return self->work(w,s);
-	}
-]],
-			
-customFunctionsToRegister={'__call'},
+					TString w(workName.c_str());
+					return self->work(w,lua);
+				}
+			]],
+			customFunctionsToRegister={'__call'},
 		},
 		{
 			name='GlobalUI',
-			inheritsFrom='OR::LUAWrap::Worker',
+			inheritsFrom='LUAwrapper::Worker',
 		},
 		{
 			name='FlLayout',
-			inheritsFrom='OR::LUAWrap::Worker',
+			inheritsFrom='LUAwrapper::Worker',
 			memberFunctions={[[
 				void begin()
+				FlLayout* layout(int n);
+				FlLayout* findLayout(const char* id)
 				void create(const char* type, const char* id, const char* title);
 				void create(const char* type, const char* id);
 				void create(const char* type, const char* id, const char* title, int startSlot, int endSlot, int height);
+				void resetToDefault()
 				void create(const char* type, const char* id, const char* title, int startSlot, int endSlot);
 				void create(const char* type, const char* id, const char* title, int startSlot);
 				void newLine(); // 다음줄로 옮긴다. (디폴트 widgetPosition에서는 자동으로 넘어가니 call안해주어도 됨.)
 				void embedLayout(FlLayout* childLayout, const char* id, const char* title);
 				void setLineSpace(int l);
+				void setHorizSpace(int h);
+				void setWidgetHeight(int h);
 				void setWidgetPos(int startSlot, int endSlot); // guideline 따라 나누어져있는 영역에서 얼만큼 차지할지.
 				void setUniformGuidelines(int totalSlot); // 가로로 totalSlot등분한다.
 				void updateLayout();
+				void resetToDefault()
 				void redraw()
+				void activate()
+				void deactivate()
 				int minimumHeight();
 				FlLayout::Widget& widgetRaw(int n); @ widget
 				int widgetIndex(const char* id);	//!< 버튼 10개를 생성한후 첫번째 버튼의 index를 받아오면, 그 이후의 버튼은 index+1, index+2.등으로 접근 가능하다.
@@ -242,6 +264,7 @@ customFunctionsToRegister={'__call'},
 			static void menuValue(FlLayout::Widget& w, int v)
 			{
 				w.menu()->value(v);
+				w.menu()->redraw();
 			}
 			static std::string menuText(FlLayout::Widget& w, int v)
 			{
@@ -289,6 +312,34 @@ customFunctionsToRegister={'__call'},
 #ifndef NO_GUI				
 				w.button()->shortcut(FlGenShortcut(s));
 				w.button()->tooltip(s);
+#endif
+			}
+			static void buttonTooltip(FlLayout::Widget& w, const char* s)
+			{
+#ifndef NO_GUI				
+				w.button()->tooltip(s);
+#endif
+			}
+			static void buttonSetLabel(FlLayout::Widget& w, const char* s)
+			{
+#ifndef NO_GUI				
+				w.button()->copy_label(s);
+#endif
+			}
+			static void redraw(FlLayout::Widget& w)
+			{
+				w.widget<Fl_Widget>()->redraw();
+			}
+			static void deactivate(FlLayout::Widget& w)
+			{
+#ifndef NO_GUI				
+				w.widget<Fl_Widget>()->deactivate();
+#endif
+			}
+			static void activate(FlLayout::Widget& w)
+			{
+#ifndef NO_GUI				
+				w.widget<Fl_Widget>()->activate();
 #endif
 			}
 			static const char* id(FlLayout::Widget& w)
@@ -358,6 +409,16 @@ customFunctionsToRegister={'__call'},
 #endif
 				return str;
 			}
+static void inputType(FlLayout::Widget& w, const char* str)
+			{
+#ifndef NO_GUI
+				if (TString(str)=="FL_MULTILINE_OUTPUT")
+				{
+					Fl_Input* ip=w.widget<Fl_Input>();
+					ip->type(FL_MULTILINE_OUTPUT);
+				}
+#endif
+			}
 			]],
 			staticMemberFunctions={[[
 			static void checkButtonValue(FlLayout::Widget& w, int value)
@@ -375,6 +436,11 @@ customFunctionsToRegister={'__call'},
 			static void sliderRange(FlLayout::Widget& w, double v1, double v2)
 			static double sliderValue2(FlLayout::Widget& w) @ sliderValue
 			static void buttonShortcut(FlLayout::Widget& w, const char* s)
+			static void buttonTooltip(FlLayout::Widget& w, const char* s)
+			static void buttonSetLabel(FlLayout::Widget& w, const char* s)
+			static void redraw(FlLayout::Widget& w)
+			static void deactivate(FlLayout::Widget& w)
+			static void activate(FlLayout::Widget& w)
 			static const char* id(FlLayout::Widget& w)
 			static int browserSize(FlLayout::Widget& w)
 			static bool browserSelected(FlLayout::Widget& w, int i)
@@ -384,119 +450,9 @@ customFunctionsToRegister={'__call'},
 			static void browserClear(FlLayout::Widget& w)
 			static void inputValue1(FlLayout::Widget& w, const char* text) @ inputValue
 			static std::string inputValue2(FlLayout::Widget& w) @ inputValue
+			static void inputType(FlLayout::Widget& w, const char* str)
 			]]}
 
-		},
-		{
-			name='QuadraticFunction',
-			ctors={'()'},
-			memberFunctions={[[
-	void addSquared(intvectorn const& index, vectorn const& value);
-	void buildSystem(int nvar, matrixn & A, vectorn &b);
-]]},
-		},
-		{
-			name='math.Function',
-			className='FuncWrap',
-			decl='class FuncWrap;',
-			isLuaInheritable=true,
-			ctors={'()'},
-			globalWrapperCode=[[
-			struct FuncWrap: public luna_wrap_object, ObjectiveFunction
-			{
-				FuncWrap()
-				{
-
-				}
-
-				virtual ~FuncWrap()
-				{
-				}
-
-				virtual vectorn& getInout() {
-					lunaStack l(_L);
-					if(pushMemberFunc<FuncWrap>(l,"getInout")){
-						l.call(1,1);
-						vectorn* inout=l.check<vectorn>();
-						return *inout;
-					} 
-					return *((vectorn*)NULL);
-				}
-
-				virtual double func(const vectorn& x)
-				{
-					lunaStack l(_L);
-					if(pushMemberFunc<FuncWrap>(l,"func")){
-						l.push<vectorn>(&x);
-						l.call(2,1);
-						double c; l>>c;
-						return c;
-					}
-					return 0;
-				}
-
-				virtual double func_dfunc(const vectorn& x, vectorn& dx)
-				{
-					lunaStack l(_L);
-					if(pushMemberFunc<FuncWrap>(l,"func_dfunc")){
-						l.push<vectorn>(&x);
-						l.push<vectorn>(&dx);
-						l.call(3,1);
-						double c; l>>c;
-						return c;
-					}
-					return 0;
-				}
-
-				virtual void info(int iter)
-				{
-					lunaStack l(_L);
-					if(pushMemberFunc<FuncWrap>(l,"info")){
-						l.call(1,0);
-					}
-				}
-			};
-
-			]]
-		},
-		{
-			name='math.GSLsolver',
-			className='GSLsolver',
-			decl='class GSLsolver;',
-			ctors={'(FuncWrap* func, const char*)'},
-			memberFunctions={[[
-			void solve( m_real step_size, m_real tol, m_real thr)
-			]]}
-		},
-		{
-			name='math.CMAwrap',
-			className='CMAwrap',
-			ctors={'(vectorn const&, vectorn const&, int, int)'},
-			memberFunctions={[[
-	std::string testForTermination();	
-	void samplePopulation();
-	int numPopulation();
-	int dim();
-	vectornView getPopulation(int i);
-	void setVal(int i, double eval);
-	void resampleSingle(int i);
-	void update();
-	void getMean(vectorn& out);
-	void getBest(vectorn& out);
-			]]}
-		},
-		{
-			name='QuadraticFunctionHardCon',
-			ctors={'(int,int)'},
-			properties={
-	'int mNumVar @ numVar',
-	'int mNumCon @ numCon',
-			},
-			memberFunctions={[[
-	void addSquared(intvectorn const& index, vectorn const& value);
-	void addCon(intvectorn const& index, vectorn const& value);
-	void buildSystem(matrixn & A, vectorn &b);
-]]},
 		},
 		{
 			name='OBJloader.Face'
@@ -632,78 +588,6 @@ memberFunctions={[[
 	m_real CalcDistance(const vectorn& a, const vectorn& b); @ calcDistance
 ]]}
 },
-		{
-			name='MotionUtil.Effectors',
-			className='std::vector<MotionUtil::Effector>',
-			ctors={'()'},
-			memberFunctions={[[
-
-									 void resize(int)
-									 MotionUtil::Effector& operator[](int i) @ at
-									 MotionUtil::Effector& operator[](int i) @ __call
-						 ]]}
-		},
-{
-	name='LimbIKsolver',
-	className='MotionUtil::LimbIKsolver',
-	ctors={
-	'(MotionDOFinfo const& dofInfo, std::vector<MotionUtil::Effector>& effectors, intvectorn const& knee_bone_indexes, vectorn const& axis_sign)',
-	'(MotionDOFinfo const& dofInfo, std::vector<MotionUtil::Effector>& effectors, Bone const& left_knee, Bone const& right_knee)'
-	   },
-memberFunctions={[[
-	void IKsolve3(vectorn & poseInout, transf const& newRootTF, vector3N const& conpos, quaterN const& conori, vectorn const& importance);
-	void IKsolve(vectorn & temp, quater const& currRotY, transf const& newRootTF, vector3N const& con);
-	void IKsolve2(vectorn & temp, quater const& currRotY, transf const& newRootTF, quaterN const& delta_foot, vector3N const& con);
-]]}
-},
-{
-	name='COM_IKsolver',
-	className='MotionUtil::COM_IKsolver',
-	ctors={
-	'(VRMLloader const& skel, std::vector<MotionUtil::Effector>& effectors, intvectorn const& knee_bone_indexes, vectorn const& axis_sign)'
-	   },
-memberFunctions={[[
-  void calcPelvisPos(vectorn& origRootTF_, quater const& currRotY, transf const& newRootTF, quaterN const& delta_foot, vector3N const& _con, vectorn const& _importance,vector3 const& _desiredCOM, vector3& pelvisPos);
-  void IKsolve(vectorn& origRootTF_, quater const& currRotY, transf const& newRootTF, quaterN const& delta_foot, vector3N const& _con, vectorn const& _importance, vector3 const& _desiredCOM);
-  void IKsolve2(vectorn & temp, quater const& currRotY, transf const& newRootTF, quaterN const& delta_foot, vector3N const& con);
-]]}
-	
-},
-{
-	name='MotionUtil.FullbodyIK',
-	memberFunctions={[[
-			void IKsolve(Posture& , vector3N const& )
-			void IKsolve(Posture const&, Posture&, vector3N const& )
-				 ]]},
-},
-{
-	name='MotionUtil.FullbodyIK_MotionDOF',
-	memberFunctions={[[
-			void IKsolve(vectorn const& , vectorn& , vector3N const& )
-			void IKsolve(vectorn& , vector3N const& )
-]]},
-},
-{
-name='MotionUtil.Effector',
-	ctors={'()'},
-	properties={'Bone* bone', 'vector3 localpos'},
-wrapperCode=[[
-			static void init(MotionUtil::Effector& e, Bone* bone, vector3 const& l)
-			{
-				e.bone=bone;
-				e.localpos=l;
-			}
-			static void initCOM(MotionUtil::Effector& e, vector3 const& l)
-			{
-				e.bone=NULL;
-				e.localpos=l;
-			}
-	]],
-staticMemberFunctions={[[
-			static void init(MotionUtil::Effector& e, Bone* bone, vector3 const& l)
-			static void initCOM(MotionUtil::Effector& e, vector3 const& l)
-				   ]]},
-},
 		{ 
 			name='Ogre.SceneNode',
 			wrapperCode=[[ static void resetToInitialState(Ogre::SceneNode* pNode)
@@ -741,7 +625,8 @@ staticMemberFunctions={[[
 			staticMemberFunctions={[[
 			static void resetToInitialState(Ogre::SceneNode* pNode)
 			static void removeAndDestroyChild(Ogre::SceneNode* pNode, const char* name)
-			static Ogre::SceneNode* createChildSceneNode2(Ogre::SceneNode* pNode)
+			static Ogre::SceneNode* createChildSceneNode2(Ogre::SceneNode* pNode) @ createChildSceneNode
+			static Ogre::SceneNode* createChildSceneNode(Ogre::SceneNode* pNode, const char* name) 
 			static void translate(Ogre::SceneNode* pNode, vector3 const& t)
 			static void rotate(Ogre::SceneNode* pNode, quater const& t)
 			static void translate(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
@@ -807,6 +692,7 @@ staticMemberFunctions={[[
 			{OGRE_VOID(pmgr->setSkyBox(enable, materialName));}
 			]],
 			staticMemberFunctions={[[
+			static Ogre::Entity* createEntity(Ogre::SceneManager* pmgr, const char* id, const char* mesh)
 			static void setAmbientLight(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z)
 			static Ogre::SceneNode* getSceneNode(Ogre::SceneManager* pmgr, const char* id)
 			static Ogre::Light* createLight(Ogre::SceneManager* pmgr, const char* id)
@@ -883,6 +769,7 @@ staticMemberFunctions={[[
 			bool isDescendent(const Bone * parent) const;
 			TString const& getRotationalChannels() const;
 			TString const& getTranslationalChannels() const;
+			void setChannels(const char* translation_axis, const char* rotation_axis);
 			int numChannels() const;
 			Bone* parent() const	
 			int voca() const	
@@ -927,13 +814,44 @@ staticMemberFunctions={[[
 				int endR(int iBone) const;
 				int startDQ(int iBone) const; 
 				int endDQ(int iBone) const;
-				int DQtoBone(int DQindex) { return _sharedinfo->DQtoBoneIndex[DQindex];}
-				int DOFtoBone(int DOFindex) { return _sharedinfo->DQtoBoneIndex[DOFindex];}
+				int DQtoBone(int DQindex)
+				int DOFtoBone(int DOFindex)
+				int DOFtoDQ(int DOFindex) 
+				int DQtoDOF(int DOFindex)
 				void blend(vectorn & out, vectorn const& p1, vectorn const& p2, m_real t) const;
 				void blendDelta(vectorn & out, vectorn const& p1, vectorn const& p2, m_real t) const;
 				void blendBone(int ibone, vectorn & c, vectorn const& a, vectorn const& b, m_real t) const;
 				]]
 }
+		},
+		{
+			name='CMotionDOFcontainer',
+			className='MotionDOFcontainer',
+			decl=[[class MotionDOFcontainer;]],
+			ctors={[[
+				(MotionDOFinfo const& info, const char* filename);
+				(MotionDOFinfo const& info);
+				(MotionDOF const& mot);
+			]]},
+			properties={
+				'MotionDOF mot',
+				'boolN discontinuity',
+				'boolN conL',
+				'boolN conR',
+			},
+			memberFunctions={[[
+				void loadMotion(const char* fn);
+				void resize(int nframes);
+				void concat(MotionDOF const& mot);
+				vectornView row(int i)
+				int numFrames() const;
+				bool isConstraint(int iframe, int con) const;
+				void setConstraint(int iframe, int con);
+				void setConstraint(int iframe, int con, bool bSet);
+				bool isContinuous(int startTime) const;
+				bool isValid(int startTime, int endTime) const;
+				bool isValid(int startTime) const;
+			]]},
 		},
 		{
 			name='InterframeDifferenceC1',
@@ -1083,7 +1001,7 @@ memberFunctions={[[
 		{ 
 
 			name='PLDPrimSkin',
-inheritsFrom='AnimationObject',
+			inheritsFrom='AnimationObject',
 			read_properties={{"visible", "getVisible"}},
 			write_properties={{"visible", "setVisible"}},
 			wrapperCode=[[ 
@@ -1125,8 +1043,18 @@ inheritsFrom='AnimationObject',
 				void setThickness(float thick){}
 				void scale(double x, double y, double z);
 				  void SetTranslation(double x, double y, double z); @ setTranslation
+				  void setMaterial(const char* mat)
 				]]
 			}
+		},
+		{
+			name='PLDPrimVRML',
+			inheritsFrom='PLDPrimSkin',
+			memberFunctions={[[
+			void setPoseDOF(const vectorn& poseDOF);
+			void setPose(BoneForwardKinematics const& in);
+			void applyAnim(const MotionDOF& motion); @ applyMotionDOF
+			]]},
 		},
 		{
 			name='Pose',
@@ -1204,6 +1132,9 @@ inheritsFrom='AnimationObject',
 				MotionUtil::smooth(motion, copy, kernelRoot, kernelJoint);
 			}
 			]],
+			enums={
+				{"IS_DISCONTINUOUS","(int)IS_DISCONTINUOUS"},
+			},
 			memberFunctions={[[
 			int length() const
 			void changeLength(int length)	
@@ -1225,11 +1156,11 @@ inheritsFrom='AnimationObject',
 			void InitSkeleton(MotionLoader* pSource); @ initSkeleton
 			bool isConstraint(int fr, int eConstraint) const;
 			void setConstraint(int fr, int con, bool bSet);
+			void SetIdentifier(const char* id) @ setIdentifier
 			void Concat(const Motion* pAdd, int startFrame, int endFrame) @ concat
 			float totalTime() const				{ return mInfo.m_fFrameTime*length();}
 			int frameRate() const				{ return int(1.f/frameTime()+0.5f);}
 			void frameTime(float ftime)		@ setFrameTime
-			int KernelSize(float fTime) const@ kernelSize
 			bool isDiscontinuous(int fr) const;//			{ return m_aDiscontinuity[fr%m_maxCapacity];}
 			void setDiscontinuity(int fr, bool value);//	{ m_aDiscontinuity.setValue(fr%m_maxCapacity, value);}
 			Posture& pose(int iframe) const;
@@ -1279,34 +1210,45 @@ memberFunctions={[[
 	void addPanel(const char* filename);
 	void addPanel(CImage* pSource);	//!< image will be copyed. You should release pSource
 	CImage* createPanel();		//! Create a dynamic panel(you can edit the content of this panel). return empty image. you can create the image by calling CImage::Create(...)
-	void addPanel(const bitvectorn& bits, CPixelRGB8 color);
+	void addPanel(const boolN& bits, CPixelRGB8 color);
 	void addPanel(const intvectorn& indexes);
 	void setLabel(const char* label);
 	void changeLabel(const char* prevLabel, const char* newLabel);
 	const char* selectedPanel()	
 	void removeAllPanel();
 	void removePanel(CImage* pImage);	//! Remove a dynamic panel.
-	void setCutState(const bitvectorn& abCutState) 
-	const bitvectorn& cutState()	
+	void setCutState(const boolN& abCutState) 
+	const boolN& cutState()	
+	void redraw()
+	int currFrame() const
 ]]}
 },
 {
 ifndef='NO_GUI',
-name='Loader'
+name='Loader',
+inheritsFrom='LUAwrapper::Worker',
 },
        
 		{ 
 			name='MotionPanel',
-ifndef='NO_GUI',
-memberFunctions={[[
-	FltkMotionWindow* motionWin()	{ return m_motionWin;}
-	FltkScrollPanel* scrollPanel()	{ return m_scrollPanel;}
-	Loader* loader()				{ return m_loader;}
-	Motion& currMotion();
-	void registerMotion(Motion const& mot);
-	void releaseMotions();
-void redraw();
-]]}
+			ifndef='NO_GUI',
+			memberFunctions={[[
+				FltkMotionWindow* motionWin()	{ return m_motionWin;}
+				FltkScrollPanel* scrollPanel()	{ return m_scrollPanel;}
+				Loader* loader()				{ return m_loader;}
+				Motion& currMotion();
+				MotionDOF& currMotionDOF();
+				MotionDOFcontainer& currMotionDOFcontainer();
+				bool hasMotionDOF();
+				bool hasPairMotion();
+				void registerMotion(Motion const& mot);
+				void registerMotion(MotionDOF const& mot);
+				void releaseMotions();
+				void redraw();
+				int numMotion();
+				Motion& motion(int i) const
+				MotionDOF& motiondof(int i) const	
+			]]}
 		},
 		{ 
 			name='Viewpoint',
@@ -1346,8 +1288,9 @@ void redraw();
 			void setFOVy(Viewpoint& view, m_real degree)
 ]]
 },
+
 			memberFunctionsFromFile={
-				'viewpoint.h',
+				source_path..'/viewpoint.h',
 				{"setScale", "setScale"},
 				{"updateVPosFromVHD", "UpdateVPosFromVHD"},
 				{"TurnRight", "TurnRight"},
@@ -1392,28 +1335,28 @@ void redraw();
 				void setChain(const Posture&, int)const
 				void setChain(const Posture&, Bone&)const
 				void insertJoint(Bone&, const char*)
-				void insertChildBone(Bone& parent, const char* nameId, bool bMoveChildren)
-				void insertChildBone(Bone& parent, const char* nameId)
+			void insertChildBone(Bone& parent, const char* nameId, bool bMoveChildren)
+			void insertChildBone(Bone& parent, const char* nameId)
 				void setPoseDOF(const vectorn& poseDOF) const
 				void getPoseDOF(vectorn& poseDOF) const
-				Bone& bone(int index) const;
-				Bone& getBoneByTreeIndex(int index)	const;
-				Bone& getBoneByRotJointIndex(int iRotJoint)	const;
-				Bone& getBoneByTransJointIndex(int iTransJoint)	const;
-				Bone& getBoneByVoca(int jointVoca)	const;
-				Bone& getBoneByName(const char*) const;
-				int getTreeIndexByName(const char* name) const;
-				int getTreeIndexByRotJointIndex(int rotjointIndex) const;
-				int getTreeIndexByTransJointIndex(int transjointIndex) const;
-				int getTreeIndexByVoca(int jointVoca) const;
-				int getRotJointIndexByName(const char* nameID) const;
-				int getRotJointIndexByTreeIndex(int treeIndex) const;
-				int getRotJointIndexByVoca(int jointVoca) const;
-				int getTransJointIndexByName(const char* nameID);
-				int getTransJointIndexByTreeIndex(int treeIndex) const;
-				int getVocaByTreeIndex(int treeIndex) const;
-				int getVocaByRotJointIndex(int rotjointIndex) const;
-				void _changeVoca(int jointVoca, Bone & bone);
+	Bone& bone(int index) const;
+	Bone& getBoneByTreeIndex(int index)	const;
+	Bone& getBoneByRotJointIndex(int iRotJoint)	const;
+	Bone& getBoneByTransJointIndex(int iTransJoint)	const;
+	Bone& getBoneByVoca(int jointVoca)	const;
+	Bone& getBoneByName(const char*) const;
+	int getTreeIndexByName(const char* name) const;
+	int getTreeIndexByRotJointIndex(int rotjointIndex) const;
+	int getTreeIndexByTransJointIndex(int transjointIndex) const;
+	int getTreeIndexByVoca(int jointVoca) const;
+	int getRotJointIndexByName(const char* nameID) const;
+	int getRotJointIndexByTreeIndex(int treeIndex) const;
+	int getRotJointIndexByVoca(int jointVoca) const;
+	int getTransJointIndexByName(const char* nameID);
+	int getTransJointIndexByTreeIndex(int treeIndex) const;
+	int getVocaByTreeIndex(int treeIndex) const;
+	int getVocaByRotJointIndex(int rotjointIndex) const;
+	void _changeVoca(int jointVoca, Bone & bone);
 				]],
 			},
 			wrapperCode=[[
@@ -1443,9 +1386,6 @@ void redraw();
 				else if(ext=="SKL"){
 					l=new BVHLoader(fn.left(-3)+"BVH","loadSkeletonOnly");
 				}
-				else if(ext=="VSK"){
-					l=new VLoader(fn);
-				}
 				else
 				{
 					l=new MotionLoader(filename);
@@ -1461,14 +1401,46 @@ void redraw();
 				else
 					RE::motion::concatFromFile(mot, motFile);
 			}
+			static void loadAnimation(MotionLoader& skel, Motion& mot, const char* fn)
+			{
+				RE::motion::loadAnimation(skel, mot, fn);
+			}
 			]],
 			staticMemberFunctions={
 				[[
+				static void loadAnimation(MotionLoader& skel, Motion& mot, const char* fn)
 				static MotionLoader* _create(const char* filename) @ ;adopt=true;
 				static void _append(MotionLoader* l, const char* motFile)
 				static void printHierarchy(MotionLoader& skel)
 				static MotionLoader* getMotionLoader(const char* fn)
 				]]},
+			memberFunctionsFromFile={
+				source_path..'/MotionLoader.h',
+				{"fkSolver", "fkSolver"},
+				{"readJointIndex", "readJointIndex"},
+				{"numRotJoint", "numRotJoint"},
+				{"numTransJoint", "numTransJoint"},
+				{"numBone", "numBone"},
+				{"setCurPoseAsInitialPose", "setCurPoseAsInitialPose"},
+				{"bone", "bone"},
+				{"setPose", "setPose"},
+				{"getTreeIndexByName", "getTreeIndexByName"},
+				{"getBoneByTreeIndex", "getBoneByTreeIndex"},
+				{"getBoneByRotJointIndex", "getBoneByRotJointIndex"},
+				{"getBoneByVoca", "getBoneByVoca"},
+				{"getBoneByName", "getBoneByName"},
+				{"removeAllRedundantBones", "removeAllRedundantBones"},
+				{"getTreeIndexByRotJointIndex", "getTreeIndexByRotJointIndex"},
+				{"getTreeIndexByTransJointIndex", "getTreeIndexByTransJointIndex"},
+				{"getTreeIndexByVoca", "getTreeIndexByVoca"},
+				{"getPose", "getPose"},
+				{"scale", "Scale"},
+				{"scale", "scale"},
+				{"insertSiteBones", "insertSiteBones"},
+				{"updateBone", "UpdateBone"},
+				{"updateInitialBone", "UpdateInitialBone"},
+				{"_changeVoca", "_changeVoca"},
+			},
 			enums={
 				{"HIPS", "(int)MotionLoader::HIPS"},
 				{"LEFTHIP", "(int)MotionLoader::LEFTHIP"},
@@ -1493,6 +1465,165 @@ void redraw();
 				{"HEAD", "(int)MotionLoader::HEAD"},
 			}
 		},
+		{
+			name='MotionUtil.Effector',
+			ctors={'()'},
+			properties={'Bone* bone', 'vector3 localpos'},
+			wrapperCode=[[
+			static void init(MotionUtil::Effector& e, Bone* bone, vector3 const& l)
+			{
+				e.bone=bone;
+				e.localpos=l;
+			}
+			static void initCOM(MotionUtil::Effector& e, vector3 const& l)
+			{
+				e.bone=NULL;
+				e.localpos=l;
+			}
+			]],
+			staticMemberFunctions={[[
+			static void init(MotionUtil::Effector& e, Bone* bone, vector3 const& l)
+			static void initCOM(MotionUtil::Effector& e, vector3 const& l)
+			]]},
+		},
+		{
+			name='MotionUtil.Effectors',
+			className='std::vector<MotionUtil::Effector>',
+			ctors={'()'},
+			memberFunctions={[[
+
+									 void resize(int)
+									 MotionUtil::Effector& operator[](int i) @ at
+									 MotionUtil::Effector& operator[](int i) @ __call
+						 ]]}
+		},
+{
+	name='MotionUtil.FullbodyIK',
+	memberFunctions={[[
+			void IKsolve(Posture& , vector3N const& )
+			void IKsolve(Posture const&, Posture&, vector3N const& )
+				 ]]},
+},
+{
+	name='MotionUtil.FullbodyIK_MotionDOF',
+	memberFunctions={[[
+			void IKsolve(vectorn const& , vectorn& , vector3N const& )
+			void IKsolve(vectorn& , vector3N const& )
+]]},
+},
+			{
+				name='MainLib.VRMLTransform',
+				className='VRMLTransform',
+				inheritsFrom='Bone',
+				wrapperCode=[[
+				static std::string HRPjointName(VRMLTransform& t, int i)
+				{
+					return std::string(t.HRPjointName(i).ptr());
+				}
+
+
+				]],
+				enums={
+					{"FREE","HRP_JOINT::FREE"},
+					{"BALL","HRP_JOINT::BALL"},
+					{"ROTATE","HRP_JOINT::ROTATE"},
+					{"FIXED","HRP_JOINT::FIXED"},
+					{"GENERAL","HRP_JOINT::GENERAL"},
+					{"SLIDE","HRP_JOINT::SLIDE"}
+				},
+				staticMemberFunctions={[[
+				static std::string HRPjointName(VRMLTransform& t, int i)
+				]]},
+				memberFunctions={[[
+				void translateMesh( vector3 const& trans);
+				void translateBone(vector3 const& trans);
+				void transformMesh(matrix4 const& m);
+				void scaleMesh( vector3 const& scale);
+				void scaleMass( m_real scalef); 
+				void initBones();
+				void copyFrom(VRMLTransform const& bone);	
+				bool hasShape() const 
+				OBJloader::Mesh& getMesh() const 
+				int numHRPjoints() const;
+				int HRPjointIndex(int i) const;
+				int DOFindex(int i) const;
+				TString HRPjointName(int i) const;
+				int HRPjointType(int i) const;
+				TString HRPjointAxis(int i) const;
+				int lastHRPjointIndex() const	
+				vector3 localCOM() const;
+				void setLocalCOM(vector3 const& com);
+				double mass();
+				vector3 inertia() const;
+				void setInertia(double ix, double iy, double iz);
+				void jointToBody(vector3& lposInOut) const;
+				void bodyToJoint(vector3& lposInOut) const;
+				]] },
+			},
+							{
+								name='VRMLloader',
+								inheritsFrom='MotionLoader',
+								wrapperCode=[[
+								inline static const char* name(VRMLloader& l)
+								{
+									return l.name;
+								}
+								inline static VRMLTransform* VRMLloader_upcast(Bone& bone)
+								{
+									return dynamic_cast<VRMLTransform*>(&bone);
+								}
+								static VRMLTransform* upcast(Bone& bone)
+								{
+									return dynamic_cast<VRMLTransform*>(&bone);
+								}
+								static VRMLloader* upcast(MotionLoader* skel)
+								{
+									return dynamic_cast<VRMLloader*>(skel);
+								}
+								]]
+								,
+								ctors={"(const char*)"},
+								staticMemberFunctions={[[
+								VRMLTransform* upcast(Bone& bone)
+								VRMLloader* upcast(MotionLoader* skel)
+								void VRMLloader::projectAngles(vectorn & temp1); @ projectAngles
+								const char* name(VRMLloader& l)
+								]]},
+								memberFunctions={
+								--void setTotalMass( m_real totalMass); 
+									[[
+								void printDebugInfo(); 
+								void changeTotalMass( m_real totalMass); 
+									VRMLTransform& VRMLbone(int treeIndex) const;
+									void insertChildJoint(Bone& parent, const char* tchannels, const char* rchannels, const char* nameId, bool bMoveChildren);
+									void _updateMeshEntity();
+									vector3 calcCOM() const;
+									void calcZMP(const MotionDOF& motion, matrixn & aZMP, double kernelSize);
+									void exportVRML(const char* filename); @ export
+									int numHRPjoints()
+									]]
+								},
+							},
+									{
+										name='VRMLloaderView',
+										inheritsFrom='VRMLloader',
+										ctors={'(VRMLloader const& source, Bone& newRootBone, vector3 const& localPos)'},
+										properties={
+											'Bone* _newRootBone',
+											'Bone* _srcRootTransf',
+											'vector3 _srcRootOffset',
+										},
+										memberFunctions={[[
+										VRMLloader const & getSourceSkel() 
+										void convertSourcePose(vectorn const& srcPose, vectorn& pose) const;
+										void convertPose(vectorn const& pose, vectorn& srcPose) const;
+										void convertSourceDOFexceptRoot(vectorn const& srcPose, vectorn& pose) const;
+										void convertDOFexceptRoot(vectorn const& pose, vectorn& srcPose) const;
+										void convertSourceDQexceptRoot(vectorn const& src_dq, vectorn& dq) const;
+										void convertDQexceptRoot(vectorn const& dq, vectorn& src_dq) const;
+										]]}
+									},
+
 	},
 	modules={
 		{
@@ -1500,10 +1631,20 @@ void redraw();
 			decl=[[
 			namespace MotionUtil{
 				void exportVRML(Motion const& mot, const char* filename, int start, int end);
+				void exportBVH(Motion const& mot, const char* filename, int start, int end);
 			}
 			]],
 			functions={[[
 			void MotionUtil::exportVRML(Motion const& mot, const char* filename, int start, int end)
+			void MotionUtil::exportBVH(Motion const& mot, const char* filename);
+			void MotionUtil::exportBVH(Motion const& mot, const char* filename, int start);
+			void MotionUtil::exportBVH(Motion const& mot, const char* filename, int start, int end);
+			]]}
+		},
+		{
+			namespace='util',
+			functions={[[
+				void Msg::msgBox(const char*) @ msgBox
 			]]}
 		},
 		{
@@ -1601,6 +1742,7 @@ void redraw();
 				OgreRenderer& RE::renderer();
 				FltkRenderer& RE::FltkRenderer();
 				void RE_::renderOneFrame(bool check)
+				PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adopt=true; 
 				]],
 				{"PLDPrimSkin* RE::createSkin(const Motion&)", adopt=true},
 				{"PLDPrimSkin* RE::createSkin(const MotionLoader&)", adopt=true},
@@ -1621,9 +1763,20 @@ namespace MotionUtil
 class COM_IKsolver;
 class LimbIKsolver;
 }
+namespace Ogre
+{
+	class MovableObject;
+	class Entity;
+	class Overlay;
+	class OverlayElement;
+	class OverlayContainer;
+	class SceneNode;
+	class SceneManager;
+}
 namespace OBJloader
 {
 class Mesh;
+class MeshToEntity;
 class Face;
 }
 namespace MotionUtil
@@ -1632,42 +1785,77 @@ class Effector;
 class FullbodyIK;
 class FullbodyIK_MotionDOF;
 }
-class GrahamScan;
 class GlobalUI;
+class Bone;
+class PLDPrimSkin;
+class MotionDOFinfo;
+class InterframeDifference;
+class InterframeDifferenceC1;
+class Motion;
+class MotionDOF;
+class MotionDOFview;
+class BoneForwardKinematics;
+class FrameSensor;
+class AnimationObject;
+class Posture;
+class FltkRenderer;
+class MotionPanel;
+class MotionView;
+class OgreRenderer;
+class PoseTransfer;
+class MotionLoader;
 class QuadraticFunction;
 class QuadraticFunctionHardCon;
 class FltkMotionWindow;
 class FltkScrollPanel;
 class Loader;
 class ObjectList;
+class WeightedPointCloudMetric;
+class KovarMetric;
+class VRMLloader;
+class VRMLloaderView;
+class VRMLTransform;
+class FlLayout;
+class Viewpoint;
+class FlChoiceWins;
+class PLDPrimVRML;
 ]])
-		writeHeader(bindTargetMainLib)
-		flushWritten(	'generated/luna_mainlib.h')
-		-- write function can be used liberally.
-		write(
-		[[
-				#include "stdafx.h"
-				#include "../MainLib/OgreFltk/MotionPanel.h"
-				#include "../BaseLib/motion/MotionRetarget.h"
-				#include "../BaseLib/motion/Concat.h"
-				#include "../BaseLib/motion/MotionUtilSkeleton.h"
-				#include "../BaseLib/motion/MotionUtil.h"
-				#include "../BaseLib/motion/VRMLexporter.h"
-				#include "../BaseLib/math/Operator.h"
-				#include "../BaseLib/math/OperatorStitch.h"
-				#include "../BaseLib/math/GnuPlot.h"
-				#include "../MainLib/OgreFltk/FlLayout.h"
-				#include "../MainLib/OgreFltk/Mesh.h"
-				#include "../MainLib/OgreFltk/objectList.h"
-				#include "../MainLib/OgreFltk/MotionManager.h"
-				#include "../MainLib/Ogre/intersectionTest.h"
+writeHeader(bindTargetMainLib)
+flushWritten(	source_path..'/generated/luna_mainlib.h')
+-- write function can be used liberally.
+write(
+[[
+#include "stdafx.h"
+#include "../MainLib/OgreFltk/MotionPanel.h"
+#include "../MainLib/OgreFltk/FltkScrollPanel.h"
+#include "../BaseLib/motion/MotionRetarget.h"
+#include "../BaseLib/motion/MotionUtil.h"
+#include "../BaseLib/motion/VRMLexporter.h"
+#include "../BaseLib/math/Operator.h"
+#include "../BaseLib/math/Metric.h"
+#include "../BaseLib/motion/viewpoint.h"
+#include "../MainLib/OgreFltk/FlLayout.h"
+#include "../MainLib/OgreFltk/Mesh.h"
+#include "../MainLib/OgreFltk/objectList.h"
+#include "../MainLib/OgreFltk/MotionManager.h"
+#include "../MainLib/OgreFltk/renderer.h"
+#include "../MainLib/Ogre/intersectionTest.h"
 #include "../BaseLib/motion/FullbodyIK_MotionDOF.h"
-#include "../BaseLib/math/cma/CMAwrap.h"
 #include "../MainLib/OgreFltk/VRMLloader.h"
-#include "../OgreFltk/MotionSynthesisLib/RigidBody/LimbIKsolver.h"
-#include "../OgreFltk/MotionSynthesisLib/RigidBody/COM_IKsolver.h"
-#include "../OgreFltk/MotionSynthesisLib/RigidBody/convexhull/graham.h"
-#include "../MainLib/gsl_addon/optimizer.h"
+#include "../MainLib/OgreFltk/VRMLloaderView.h"
+#include "../MainLib/OgreFltk/GlobalUI.h"
+#include "../MainLib/OgreFltk/FltkRenderer.h"
+#include "../MainLib/OgreFltk/FlChoice.h"
+#include "../MainLib/OgreFltk/FlLayout.h"
+#include "../MainLib/WrapperLua/LUAwrapper.h"
+#include "../MainLib/WrapperLua/LUAwrapper.h"
+#include "../MainLib/OgreFltk/framemoveobject.h"
+#include "../MainLib/OgreFltk/timesensor.h"
+#include "../MainLib/OgreFltk/AnimationObject.h"
+#include "../MainLib/OgreFltk/FltkRenderer.h"
+#include "../MainLib/OgreFltk/FltkAddon.h"
+#include "../MainLib/OgreFltk/MotionPanel.h"
+#include "../BaseLib/motion/MotionWrap.h"
 #ifndef NO_GUI
 
 #include <FL/fl_ask.H>
@@ -1732,7 +1920,6 @@ typedef unsigned short ushort;
 		write('#include "luna_mainlib.h"')
 		write('#include "../BaseLib/motion/ASFLoader.h"')
 		write('#include "../BaseLib/motion/BVHLoader.h"')
-		write('#include "../BaseLib/motion/Vloader/VLoader.h"')
 		writeDefinitions(bindTargetMainLib, 'Register_mainlib') -- input bindTarget can be non-overlapping subset of entire bindTarget 
-		flushWritten('generated/luna_mainlib.cpp') -- write to cpp file only when there exist modifications -> no-recompile.
+		flushWritten(source_path..'/generated/luna_mainlib.cpp') -- write to cpp file only when there exist modifications -> no-recompile.
 	end

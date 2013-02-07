@@ -1,8 +1,8 @@
 = Files =
 	test_luna/*.lua : self-contained examples (run make.sh to run) 
-			These examples are starting points for your project.
+			These examples use CMake. If you don't want to use CMake, see "examples/gen.sh". 
 
-	luna_gen.lua:  the code generator
+	luna_gen.lua:  the code generator. 
 
 	mylib*.lua: the code generator depends on these files, but output codes do not.
 			luna.h/cpp: the output code depends only on these files. 
@@ -10,6 +10,8 @@
 
 	examples/*.lua : real-world examples that use all available functionalities (run gen.sh to convert.)
 				   The real-world examples do not run on your system because of missing dependencies.
+	
+	see examples/README for details. This file explains how to call a lua function from c.
 
 = Supported type =
 	class   ( corresponds to a userdata that has a metatable )
@@ -37,8 +39,8 @@
 	write_properties
 	customFunctionsToRegister : luna-gen can register a custom function 'int funcName(lua_State* L)'
 
-Sorry for the lack of documentations. 
-Search for keyword in examples to see its usage, or ask me so that I can update this document. 
+	Sorry for the lack of documentations. 
+	Search for keyword in examples to see its usage, or ask me so that I can update this document. 
 
 = Notes for luabind users =
 

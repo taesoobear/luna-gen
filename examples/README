@@ -1,0 +1,72 @@
+This example show how to use multiple definition files
+
+luna_mainlib.lua contains binding definitions for LIBOGRE
+luna_pdfwin.lua  depends on baselib and mainlib
+
+run "gen.sh" and see the "generated" folder
+
+the numbers in the generated header files denote the line number of luna_gen.lua
+
+//to use the generated files,
+//just declare
+void Register_baselib(lua_State* L);
+void Register_mainlib(lua_State* L);
+void Register_pdfwin(lua_State* L);
+
+//Then call those functions as follows:
+
+static void _initLuaEnvironment(RightPanel* win)
+{
+
+	if(L) lua_close(L);
+	L=lua_open();
+	luaopen_base(L);
+	luaL_openlibs(L);
+	Register_baselib(L);
+	Register_mainlib(L);
+	Register_pdfwin(L);
+	lunaStack ls(L);
+	ls.set<PDFwin>("win", (win->mPDFwin));
+	ls.set<FlLayout>("panel", win);
+}
+
+
+// To use pcall (that launches a debugger when fails)
+static int errorFunc=0;
+inline static void checkErrorFunc(lunaStack&l)
+{
+	if (errorFunc==0){
+		l.getglobal("dbg", "console");
+		errorFunc=l.gettop();
+		if (errorFunc==0) printf("Warning! cannot find the error function!\n");
+	}
+}
+static lua_State* loadScript(RightPanel* win)
+{
+	lua_State* L=_initLuaEnvironment(win);
+
+	if(luaL_dofile(L, "input.lua")==1)
+		printf("error\n")
+
+	lunaStack l(L);
+	// assuming input.lua contains "require('mylib')"
+	// let's use dbg.console() as the error function.
+	checkErrorFunc(l);
+	l.getglobal("luafunction_name");
+	l << "param1";
+	l << "param2";
+	lua_pcall(l.L,2,1,errorFunc);
+	l.setCheckFromTop();
+	double returnvalue;
+	l >> returnvalue;
+	return L;
+}
+
+input.lua:
+
+require('mylib')
+function luafunction_name(a,b)
+	win:somefunction(a,b)
+	return 0
+end
+
