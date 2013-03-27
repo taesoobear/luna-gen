@@ -6,7 +6,7 @@ if false then -- debug mode functions. (significant performance overhead when en
 		return ipairs_old(t,f)
 	end
 end
-dbg={ _count=1}
+dbg={ _count=1, linecolor="solidred"}
 util=util or {}
 function assert(bVal)
    if not bVal then
@@ -93,10 +93,25 @@ function dbg.listLunaClasses(line)
 	print(out)
 	if out2~='' then print('Member functions:\n', out2) end
 end
+local err = pcall(function()
+	dbg.rl = require 'readline'  
+end)
+-- Unix readline support, if readline.so is available...
 function dbg.readLine(cursor)
-	io.write(cursor)
-	return io.read('*line')
+	if not dbg.rl then
+		io.write(cursor)
+		return io.read('*line')
+	else
+		local line= dbg.rl.readline(cursor)
+		if dbg.rl.saveline then
+			dbg.rl.saveline(line)
+		elseif dbg.rl.add_history then
+			dbg.rl.add_history(line)
+		end
+		return line
+	end
 end
+
 function dbg.traceBack(level)
    if level==nil then
       level=1
@@ -163,19 +178,17 @@ function os.openTerminal(folder)
 end
 
 function os.vi_check(fn)
-	local L = require "functional.list"
 	local otherVim='vim'
 	local servers=string.tokenize(os.capture(otherVim..' --serverlist 2>&1',true), "\n")
-	local out=L.filter(function (x) return string.upper(fn)==x end,servers)
-	local out_error=L.filter(function (x) return string.find(x,"Unknown option argument")~=nil end,servers)
+	local out=array.filter(function (x) return string.upper(fn)==x end,servers)
+	local out_error=array.filter(function (x) return string.find(x,"Unknown option argument")~=nil end,servers)
 	if #out_error>=1 then return nil end
 	return #out>=1
 end
 
 function os.vi_console_close_all()
-	local L = require "functional.list"
 	local servers=string.tokenize(os.capture('vim --serverlist',true), "\n")
-	local out=L.filter(function (x) return fn~="GVIM" end,servers)
+	local out=array.filter(function (x) return fn~="GVIM" end,servers)
 	for i,v in ipairs(out) do
 		os.execute('vim --servername "'..v..'" --remote-send ":q<CR>"')
 	end
@@ -369,6 +382,15 @@ function dbg.showCode(fn,ln)
 	)
 end
 
+-- e.g. dbg.setFunctionHook(RE, 'createVRMLskin')
+function dbg.setFunctionHook(table, functionName)
+	dbg[functionName..'_old']=table[functionName]
+	table[functionName]=function (...)
+		print('Function :'..functionName)
+		dbg.console()
+		return dbg[functionName..'_old'](...)
+	end
+end
 function dbg.console(msg, stackoffset)
 
 	stackoffset=stackoffset or 0
@@ -462,7 +484,7 @@ function dbg.console(msg, stackoffset)
 		elseif string.sub(line,1,2)=="bt" then dbg.callstack(tonumber(string.sub(line,3)) or 3)
 		elseif line=="clist" or string.sub(line,1,6)=='clist ' then
 			dbg.listLunaClasses(line)		
-		elseif cmd=="c" then
+		elseif cmd=="c" or cmd=="v" then
 			if cmd_arg==nil then
 				local level=stackoffset
 				while true do
@@ -493,24 +515,17 @@ function dbg.console(msg, stackoffset)
 				else
 					local ln=info.currentline
 					print(string.sub(info.source,2))
-					dbg.showCode(string.sub(info.source,2),ln)
-					dbg._saveLocals=dbg.locals(level+1,true)
+					if cmd=="v" then
+						local fn=string.sub(info.source,2)
+						fn=os.relativeToAbsolutePath(fn)
+						os.vi_line(fn,info.currentline)
+					else
+						dbg.showCode(string.sub(info.source,2),ln)
+						dbg._saveLocals=dbg.locals(level+1,true)
+					end
 				end
 			else
 				print('no such level')
-			end
-		elseif cmd=="v" then
-			local info=debug.getinfo((cmd_arg or 1)+stackoffset-1)
-			if info and info.source=="=(tail call)" then
-				info=debug.getinfo((cmd_arg or 1)+stackoffset)
-			end
-			if info then
-				--os.vi_line(string.sub(info.source,2), info.currentline)
-				local fn=string.sub(info.source,2)
-				fn=os.relativeToAbsolutePath(fn)
-				--fn=os.absoluteToRelativePath(fn, os.relativeToAbsolutePath("../.."))
-				--os.luaExecute([[os.vi_line("]]..fn..[[",]]..info.currentline..[[)]])
-				os.vi_line(fn,info.currentline)
 			end
 		elseif cmd=="e" then
 			local info=debug.getinfo((cmd_arg or 1)+stackoffset-1)
@@ -1034,6 +1049,7 @@ end
 function array.filter(func, ...)
     return zip_with_helper(filter_helper, func, ...)
 end
+
 
  --[[
     map(function, [one or more tables])
@@ -1559,6 +1575,9 @@ function util.convertFromLuaNativeTable(t)
 end
 
 function util.readFile(fn)
+	if os.isWindows() then
+		fn=os.toWindowsFileName(fn)
+	end
 	local fout, msg=io.open(fn, "r")
 	if fout==nil then
 		print(msg)
@@ -1594,6 +1613,9 @@ end
 
 
 function util.writeFile(fn, contents)
+	if os.isWindows() then
+		fn=os.toWindowsFileName(fn)
+	end
 	local fout, msg=io.open(fn, "w")
 	if fout==nil then
 		print(msg)
@@ -1806,7 +1828,7 @@ end
 function os.createDir(path)
 
    if os.isUnix() then
-      os.execute('mkdir "'..path..'"')
+      os.execute('mkdir -p "'..path..'"')
    else
       os.execute("md "..os.toWindowsFileName(path))
    end
@@ -1856,6 +1878,9 @@ function os.relativeToAbsolutePath(folder,currDir)
 	return folder
 end
 function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file name
+	if os.isWindows() then
+		folder=os.fromWindowsFileName(folder)
+	end
 	if(string.sub(folder,1,1)~="/") then return folder end
 	currDir=currDir or os.currentDirectory()
 	local n_ddot=0

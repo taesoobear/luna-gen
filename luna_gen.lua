@@ -162,6 +162,7 @@ do -- utility functions
 		db.enum_types=gen_lua.enum_types
 		db.boolean_types=gen_lua.boolean_types
 		local str=table.tostring(db)
+		print('generating '..filename)
 		util.writeFile(filename, str)
 	end
 
@@ -284,7 +285,11 @@ do -- utility functions
 						local adopt=true
 						-- value type : copy constructor
 						if catch then addLine('\ttry {') end
-						addLine('\t'..vv.returnType.t..'* ret=new '..vv.returnType.t..'('..cppname..'('..parsedNames(vv.args)..'));')
+						local inputToCtor=cppname..'('..parsedNames(vv.args)..')'
+						if inputToCtor=='self.operator-()' then
+							inputToCtor='-self'
+						end
+						addLine('\t'..vv.returnType.t..'* ret=new '..vv.returnType.t..'('..inputToCtor..');')
 						addLine('	Luna<'..cpp_parent_classname..' >::push(L,ret,'..tostring(adopt)..',"'..cp.uniqueLuaClassname..'");')
 						if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
 					end
@@ -709,7 +714,8 @@ do -- utility functions
 	function rectifyFunctions(functions)
 		local output={}
 		if type(functions)=='string' then
-			lgerror('string "'..functions..'" is given where table (of function defs) is expected')
+			--lgerror('string "'..functions..'" is given where table (of function defs) is expected')
+			functions={functions}
 		end
 		for i,v in ipairs(functions) do
 			if type(v)=="string" then
@@ -764,6 +770,7 @@ do -- utility functions
 				end
 			end
 		end
+		print('generating '..filename)
 		util.writeFile(filename, ctx_new)
 			
 	end
@@ -780,12 +787,12 @@ function buildDefinitionDB(...)
 		if bindTarget.modules then
 			for k,v in ipairs(bindTarget.modules) do
 
+				if not v.namespace then
+					lgerror('module '..k..' does not have namespace')
+				end
 				v.namespace,v.name=string.rightTokenize(v.namespace, '%.')
 				if v.name=='_G' then 
 					v.namespace='_G'
-				end
-				if not v.namespace then
-					lgerror('module '..k..' does not have namespace')
 				end
 				v.staticMemberFunctions=v.functions
 				v.isModule=true
