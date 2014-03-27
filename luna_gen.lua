@@ -12,7 +12,21 @@ do -- user configurations : all these can be changed in input file or from comma
 	'^decl$','^if_$', '^enums$','^inheritsFrom$', '^name$','^className$','^ctors$','^wrapperCode$',
 	'^globalWrapperCode',  '^staticMemberFunctions$', '^memberFunctionsFromFile$', '^memberFunctions$',
 	'^read_properties$','^write_properties$','^customFunctionsToRegister$', '^properties$',}
-	gen_lua.number_types={'int', 'double', 'float','long'}
+	-- you can use luaName instead of name
+	-- you can use cppName instead of className
+	gen_lua.classProperty_name_translation={ 
+		luaName="name", 
+		luaname="name", 
+		cppName='className',
+		cppname='className',
+		ctor='ctors',
+		constructor='ctors',
+		constructors='ctors',
+		superClass='inheritsFrom',
+		super='inheritsFrom',
+		parentClass='inheritsFrom',
+	}
+	gen_lua.number_types={'int', 'double', 'float','long', 'short'}
 	gen_lua.enum_types={}
 	gen_lua.boolean_types={'bool'}
 	gen_lua.string_types={'const%s+char%s*%*', 'std%s*::%s*string', 'TString'} -- string types has to support static conversion  to const char*, and construction from const char*.
@@ -24,8 +38,17 @@ do -- user configurations : all these can be changed in input file or from comma
 	gen_lua.enable_type_checking=true  -- even with this option turned off, some type checking that don't affect computation time is still turned on.
 	gen_lua.generate_debug_printf=false -- for debugging luna_gen.lua
 	gen_lua.catch_cpp_exception=true  -- catches std::exception(...)
+	gen_lua.catch_string='\t} catch(std::exception& e) { luaL_error( L,e.what()); }'
+	gen_lua.catch_string=[[
+	} 
+	catch(std::exception& e) { luaL_error( L,e.what()); }
+	catch(...) { luaL_error( L,"unknown_error");}
+	]]
 	gen_lua.no_unmodified_overwriting=false  -- set true if you don't want to overwrite the output file when it's unchanged. Setting this true can conflict with make's dependency checking. 
 	gen_lua.use_profiler=false -- uses performance profiler. See test_profiler sample.
+	if os.isWindows() then
+		gen_lua.no_unmodified_overwriting=true  -- this works better with windows visual studio
+	end
 end
 
 -- How to read code.
@@ -253,7 +276,7 @@ do -- utility functions
 		if vv.returnType.c=='void' then
 			if catch then addLine('\ttry {') end
 			addLine('\t'..cppname..'('..parsedNames(vv.args)..');')
-			if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
+			if catch then addLine(gen_lua.catch_string) end
 			addLine('	return 0;')
 		else
 			if isLunaType(vv.returnType) then
@@ -271,7 +294,7 @@ do -- utility functions
 					addLine('\t'..vv.returnType.t..' ret='..cppname..'('..parsedNames(vv.args)..');')
 					addLine('   if (ret==NULL) lua_pushnil(L); else ')
 					addLine('	Luna<'..cpp_parent_classname..' >::push(L,('..cpp_parent_classname..' *)ret,'..tostring(adopt)..',"'..cp.uniqueLuaClassname..'");')
-					if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
+					if catch then addLine(gen_lua.catch_string) end
 				else
 					ii=string.find(ia.t,'%&') 
 					if ii then
@@ -280,7 +303,7 @@ do -- utility functions
 						if catch then addLine('\ttry {') end
 						addLine('\t'..vv.returnType.t..' ret='..cppname..'('..parsedNames(vv.args)..');')
 						addLine('	Luna<'..cpp_parent_classname..' >::push(L,&ret,'..tostring(adopt)..',"'..cp.uniqueLuaClassname..'");')
-						if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
+						if catch then addLine(gen_lua.catch_string) end
 					else
 						local adopt=true
 						-- value type : copy constructor
@@ -291,7 +314,7 @@ do -- utility functions
 						end
 						addLine('\t'..vv.returnType.t..'* ret=new '..vv.returnType.t..'('..inputToCtor..');')
 						addLine('	Luna<'..cpp_parent_classname..' >::push(L,ret,'..tostring(adopt)..',"'..cp.uniqueLuaClassname..'");')
-						if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
+						if catch then addLine(gen_lua.catch_string) end
 					end
 				end
 				addLine('	return 1;')
@@ -299,7 +322,7 @@ do -- utility functions
 				if catch then addLine('\ttry {') end
 				addLine('\t'..vv.returnType.t..' ret='..cppname..'('..parsedNames(vv.args)..');')
 				addLine('	lua_pushnumber(L, ret);')
-				if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
+				if catch then addLine(gen_lua.catch_string) end
 				addLine('	return 1;')
 			elseif isStringType(vv.returnType) then
 				if catch then addLine('\ttry {') end
@@ -310,14 +333,14 @@ do -- utility functions
 						break
 					end
 				end
-				if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
+				if catch then addLine(gen_lua.catch_string) end
 				addLine('	return 1;')
 
 			elseif isBooleanType(vv.returnType) then
 				if catch then addLine('\ttry {') end
 				addLine('\t'..vv.returnType.t..' ret='..cppname..'('..parsedNames(vv.args)..');')
 				addLine('	lua_pushboolean(L, ret);')
-				if catch then addLine('\t} catch(std::exception& e) { luaL_error( L,e.what()); }') end
+				if catch then addLine(gen_lua.catch_string) end
 				addLine('	return 1;')
 			elseif vv.returnType.t=='void' then
 				addLine('	return 0;')
@@ -484,8 +507,11 @@ do -- utility functions
 
 	function addParsedArg(vv, args)
 		if gen_lua.enable_type_checking and not vv.overloaded then
-			addLine('    if (!_lg_typecheck_'..vv.luaname..'(L)) { luna_printStack(L); luaL_error(L, "luna typecheck failed:'..vv.luaname..'('..argsToString(args)..')"); }\n')
+			addLine('    if (!_lg_typecheck_'..vv.luaname..'(L)) { char msg[]="luna typecheck failed:\\n  '..vv.luaname..'('..argsToString(args)..')"; puts(msg); luna_printStack(L); luaL_error(L, msg); }\n')
 		end
+		if vv.if_ then
+			addLine('#if '..vv.if_)
+		end 
 		for i,ia in ipairs(args) do
 			if isLunaType(ia) then
 				--local t=string.gsub(ia.t,'%&','') -- remove reference
@@ -517,6 +543,9 @@ do -- utility functions
 				lgerror('Unknown or unsupported argument type: ',table.tostring(ia))
 			end
 		end
+		if vv.if_ then
+			addLine('#endif //'..vv.if_)
+		end 
 	end
 	function addTypeCheck(args)
 
@@ -531,6 +560,7 @@ do -- utility functions
 				if debug_printf then
 					addLine('printf("unique_id:%d=='..luaclass.uniqueID..'\\n",luna_t::get_uniqueid(L,'..i..'));')
 				end
+				assert(luaclass.uppermostParent.uniqueID)
 				addLine('	if( Luna<void>::get_uniqueid(L,'..i..')!='..luaclass.uppermostParent.uniqueID..') return false; // '..normalizedClassNameToClassName(luaclass.uppermostParent.className))
 			elseif isNumberType(ia) then
 				addLine('	if( lua_isnumber(L,'..i..')==0) return false;')
@@ -724,6 +754,7 @@ do -- utility functions
 					local s=string.find(l,'//') 
 					if s then l=string.sub(l, 1, s-1)  end -- remove comments
 					local s=string.find(l,'@')
+					l=string.gsub(l, '%svirtual%s+',' ') -- remove virtual keyword
 					if s then -- parse options
 						local ren=string.trimSpaces(string.sub(l, s+1))
 						local options={}
@@ -845,6 +876,22 @@ function buildDefinitionDB(...)
 		if luaclass.ifndef then
 			luaclass.if_='!defined ('..luaclass.ifndef..')'
 		end
+		-- automatic syntax corrections
+		for k, v in pairs(gen_lua.classProperty_name_translation) do
+			if  luaclass[k] then
+				luaclass[v]=luaclass[k]
+				luaclass[k]=nil
+			end
+		end
+		-- automatic syntax corrections
+		if luaclass.inheritsFrom and select(1,string.find(luaclass.inheritsFrom,'%.')) then
+			luaclass.inheritsFrom=string.gsub(luaclass.inheritsFrom,"%.", "::")
+		end
+		if luaclass.decl and type(luaclass.decl)=='boolean' then
+			luaclass.decl='class '..luaclass.className..';'
+			luaclass.autodecl=nil
+		end
+		luaclass.name=string.gsub(luaclass.name,'::','%.')
 		for k,v in pairs(luaclass) do -- check syntax error of user-given definition
 			if not string.isMatched(k, gen_lua.supportedClassProperties) then
 				if luaclass.isModule then
@@ -941,6 +988,10 @@ function buildDefinitionDB(...)
 			if not luaclass.memberFunctions then luaclass.memberFunctions={} end
 
 			local propertyLines={}
+
+			if type(luaclass.properties)=='string' then
+				luaclass.properties={luaclass.properties}
+			end
 			for ip, p in ipairs(luaclass.properties) do
 				local cc=string.lines(p)
 				for i=1,#cc do
@@ -1003,6 +1054,11 @@ function buildDefinitionDB(...)
 		local defineIndexMetaMethods=luaclass.defineIndexMetaMethods
 		while luaclass.uppermostParent.inheritsFrom do
 			luaclass.uppermostParent=findLunaClassProperty({c=luaclass.uppermostParent.inheritsFrom })
+			if not luaclass.uppermostParent then
+				print("Unknown parent class: ", luaclass.inheritsFrom )
+				print("Please check the C++ class name")
+				assert(false)
+			end
 			if luaclass.uppermostParent.defineIndexMetaMethods then
 				defineIndexMetaMethods=true
 			end
@@ -1021,7 +1077,8 @@ function buildDefinitionDB(...)
 			luaclass.isExtendableFromLua=true
 			luaclass.defineInheritedIndexMetaMethods=true 
 			-- TODO: need to add the metatable.__index fallback in the default __index and __newindex functions.
-			array.pushBack(luaclass.customFunctionsToRegister, {'::Luna<'..cpp_parent_classname..' >::new_modified_T', 'new_modified_T'})
+			--array.pushBack(luaclass.customFunctionsToRegister, {'::Luna<'..cpp_parent_classname..' >::new_modified_T', 'new_modified_T'})
+			array.pushBack(luaclass.customFunctionsToRegister, {'::Luna<'..normalizedClassNameToClassName(luaclass.className)..' >::new_modified_T', 'new_modified_T'})
 		end
 	end
 
@@ -1192,7 +1249,7 @@ function writeHeader(bindTarget)
 	addLine('#endif')
 	gen_lua.declarationWritten =true
 end
-function writeDefinitions(bindTarget, bindfunc_name)
+function writeDefinitions(bindTarget, bindfunc_name, customScript)
 
 	if gen_lua.definitionDBbuilt==false then
 		print('warning! calling buildDefinitionsDB.')
@@ -1585,6 +1642,10 @@ function writeDefinitions(bindTarget, bindfunc_name)
 		if luaclass.if_ then
 			addLine('#endif //'..luaclass.if_)
 		end
+	end
+
+	if customScript then
+		addLine(codeDostring(customScript))
 	end
 	addLine('}')
 end
