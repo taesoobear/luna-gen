@@ -449,10 +449,12 @@ do -- utility functions
 		if type(fn)=='table' then
 			tbl=parseMemberFunction(fn[1])
 			for k,v in pairs(fn) do
-				if fn.rename then
-					tbl.luaname=fn.rename
-				elseif k~=1 then
-					tbl[k]=v -- pass through other options
+				if k~=1 then
+					if k=='rename' then
+						tbl.luaname=v
+					else
+						tbl[k]=v -- pass through other options
+					end
 				end
 			end
 			return tbl
