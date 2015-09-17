@@ -4,6 +4,9 @@ require('mylib')
 source_file_name,source_path=os.processFileName(arg[1])
 if source_path=='' then source_path='.' end
 
+if math.mod ==nil then
+	math.mod=function (a,b) return a%b end 
+end
 do -- user configurations : all these can be changed in input file or from command line argument.
 	verbosecpp=true  -- easy for debugging cpp compilation error
 	verbose=false
@@ -1098,6 +1101,17 @@ function buildDefinitionDB(...)
 			end
 			tagOverloadedFunctions(luaclass.ctors)
 		end
+
+		do
+			luaclass.memberFunctions=luaclass.memberFunctions or {}
+			luaclass.staticMemberFunctions=luaclass.staticMemberFunctions or {}
+			if type(luaclass.memberFunctions)=='string' then
+				luaclass.memberFunctions={luaclass.memberFunctions}
+			end
+			if type(luaclass.staticMemberFunctions)=='string' then
+				luaclass.staticMemberFunctions={luaclass.staticMemberFunctions}
+			end
+		end
 		do -- parse definitions from file
 			if luaclass.memberFunctionsFromFile then
 				local mfff=luaclass.memberFunctionsFromFile
@@ -1113,6 +1127,9 @@ function buildDefinitionDB(...)
 				
 				for i=2,#mfff do
 					local funcName=mfff[i] -- {luaname, cppname}
+					if type(funcName)=='string' then
+						funcName={funcName, funcName}
+					end
 					local declFound
 					for j=1,#cc do
 						local decl=cc[j]
