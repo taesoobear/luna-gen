@@ -1,45 +1,47 @@
 luna-gen
-===========
+========
 
 lua binding code generator that supports nearly all the functionalities of famous existing alternatives such as luabind and tolua++.
 
-    lua/c++ bi-directional function calls and value setting/getting.
-    member properties (such as "a.x =3" )
-    inheritance (both from lua and c++)
-    namespace (both c++ one such as std::vector\<int\> and lua one such as string.strcmp)
-    enum
-    type-checking (can be turned off)
-    c++ exception handling (can be turned off)
-    adopt-policy, discard_result
-    supports both g++ and MSVS
-    function overloading (e.g. void add(int a,int b); void add(int a, int b, int c);)
-    operator overloading (e.g. double operator+(double a);)
-    user-configurable custom string and number/enum types
-    table manipulations (see test_table sample for details)
-    macro dependent binding definitions (ifdef/ifndef/if)
-    ... 
+-    lua/c++ bi-directional function calls and value setting/getting.
+-    member properties (such as "a.x =3" )
+-    inheritance (both from lua and c++)
+-    namespace (both c++ namespaces such as std::vector and lua tables such as string.strcmp)
+-    enum
+-    type-checking (can be turned off)
+-    c++ exception handling (can be turned off)
+-    adopt-policy, discard_result
+-    supports both g++ and MSVS
+-    function overloading (e.g. void add(int a,int b); void add(int a, int b, int c);)
+-    operator overloading (e.g. double operator+(double a);)
+-    user-configurable custom string and number/enum types
+-    table manipulations (see test_table sample for details)
+-    macro dependent binding definitions (ifdef/ifndef/if)
+-    ... 
 
 These functionalities have been well-tested on multiple research projects that I am involved.
-Advantages over alternatives
 
-    It's about 3 times faster than luabind 9.1 (benchmarked in ubuntu linux.)
-    As fast as best hand-written codes to my knowledge.
-    Output C++ codes are human-readable and thus easy to debug.
-    Minimul use of template-programming for faster compilation speed.
-    Much more flexible than tolua++ because of the use of lua scripting language for input file format
-    Written in native lua.
-    Include a good debugger. (dbg.console() - type h for help. examples/README)
-    Easy to use. See an example below and the samples in the test_luna folder
-    Blend very well with native Lua API calls.
-    No C++ RTTI (run-time type information) used
-    No boost dependency. Output codes depend only on luna.h/luna.cpp and liblua.
-    built in profiler to measure how much time is used in lua and C++, respectively. (enabled only when gen_lua.use_profiler is set true) 
+Advantages over alternatives
+========
+-    It's about 3 times faster than luabind 9.1 (benchmarked in ubuntu linux.)
+-    As fast as best hand-written codes to my knowledge.
+-    Output C++ codes are human-readable and thus easy to debug.
+-    Minimul use of template-programming for faster compilation speed.
+-    Much more flexible than tolua++ because of the use of lua scripting language for input file format
+-    Written in native lua.
+-    Include a good debugger. (dbg.console() - type h for help. examples/README)
+-    Easy to use. See an example below and the samples in the test_luna folder
+-    Blend very well with native Lua API calls.
+-    No C++ RTTI (run-time type information) used
+-    No boost dependency. Output codes depend only on luna.h/luna.cpp and liblua.
+-    built in profiler to measure how much time is used in lua and C++, respectively. (enabled only when gen_lua.use_profiler is set true) 
 
 Example
+===
 
-input.lua
+**input.lua**
 
- bindTarget={
+> bindTarget={
   classes={
    {
      name='math.NonuniformSpline', -- lua name
@@ -105,7 +107,7 @@ function generate()
   writeIncludeBlock() -- luna.h and such
   write('#include "bind.h"') 
 
-  write([[
+>  write([[
     #include "stdafx.h"
     #include "spline.h"
     #include "boolN.h"
@@ -119,47 +121,47 @@ function generate()
 end
 
 Usage
-
+=
    lua luna_gen.lua input.lua
 
 Parser restrictions
+=
+ -  default parameters are supported by function overloading.
 
-    default parameters are supported by function overloading.
-
-     (x) memberFunctions={[[ int add(int a, int b=0);]]}
+  >   (x) memberFunctions={[[ int add(int a, int b=0);]]}
      (O) memberFunctions={[[ int add(int a, int b);
                              int add(int a);]]}
+                             
+ - a member function definition should be in a single line
 
-    a member function definition should be in a single line
-
-     (X) memberFunctions={ [[
+ >    (X) memberFunctions={ [[
          int add(int a, 
                  int b) 
          ]]}
 
-    do not include function body.
+ -   do not include function body.
 
-     (X) memberFunctions={ 'int add(int a, int b) { return a+b;}' }
+ >   (X) memberFunctions={ 'int add(int a, int b) { return a+b;}' }
      (O) memberFunctions={ 'int add(int a, int b)' }
      (O) memberFunctions={ 'int add(int a, int b); // add a and b' }
 
-    do not input or return pointer/reference to numbers because lua native types are treated as values (as opposed to references)
+ - do not input or return pointer/reference to numbers because lua native types are treated as values (as opposed to references)
 
-      (X) memberFunctions={ 'int* add(int &a)'}
+ >    (X) memberFunctions={ 'int* add(int &a)'}
       (O) memberFunctions={ 'int add(int a)'}
 
     so if you want to export 'int* MyClass::add(int &a)', write a wrapper code such as
 
-          wrapperCode=[[ static int add2(MyClass & self, int a) { return *(self.add(a));}]],
+ > wrapperCode=[[ static int add2(MyClass & self, int a) { return *(self.add(a));}]],
           staticMemberFunctions={[[
                static int add2(MyClass& self, int a) @ add
           ]]} -- "add2" is renamed to "add" in lua
 
 how to download, and run test programs
-
+=
 type
 
-git clone https://code.google.com/p/luna-gen/ 
+	git clone https://code.google.com/p/luna-gen/ 
 
 in a terminal (or msysgit console on a windows machine.)
 
@@ -167,21 +169,21 @@ To compile:
 
 On unix, after installing lua dependencies (for instance, sudo apt-get install liblua5.1-0-dev cmake)
 
-cd luna-gen/test_luna
-sh make.sh
+	cd luna-gen/test_luna
+	sh make.sh
 
 On windows (assuming you are using msysgit console)
 
-cd luna-gen/test_luna
-mkdir build_win
-cd build_win
-cmake -G "Visual Studio 8 2005" ..
+	cd luna-gen/test_luna
+	mkdir build_win
+	cd build_win
+	cmake -G "Visual Studio 8 2005" ..
 
 The target name differs depending on the MSVS compiler version. Build the resulting .sln file.
 
 To update to the latest version,
 
-git pull origin master
+	git pull origin master
 
 Open source projects that use luna-gen
 
@@ -199,21 +201,20 @@ These missing features can lead to ungraceful errors if program is buggy. (for e
 
 These missing features are due to design decisions made to keep the binding code as FAST as possible. So these features won't be supported in the later versions either. (I think that the current version is feature-complete for most use-cases.)
 
-See README for more details.
 Compatibility
-
+=
 Currently only lua 5.1 is supported. (Many functionalities will work for lua 5.2, but some won't at the moment.)
 License
-
+=
 The code generator luna-gen.lua is under GPL-license, but its input/output files and the dependencies luna.h, luna.cpp, mylib.lua are NOT. (The dependencies are distributed under MIT license when it is not bundled with QPerformanceTimer.h). So you can use luna-gen freely for all purposes including developing commercial apps without having to publish your source codes. In other words, when developing commercial apps, just remove QPerformanceTimer.h which is unused by default.
 Questions?
 
 Please ask questions using the issue tracker here or e-mails.
 Notes
-
+=
 Recommend editor : vim (vim's auto-indenting works better than many other editors for luna-gen's definition files
-Files 
 
+Files 
 =====
 	test_luna/*.lua : self-contained examples (run make.sh to run) 
 			These examples use CMake. If you don't want to use CMake, see "examples/gen.sh". 
