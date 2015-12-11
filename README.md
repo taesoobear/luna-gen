@@ -41,84 +41,83 @@ Example
 
 **input.lua**
 
-> bindTarget={
-  classes={
-   {
-     name='math.NonuniformSpline', -- lua name
-     className='NonuniformSpline', -- c++ name
-     ctors={'(vectorn const&, const matrixn&)', '()'}, -- constructors
-     memberFunctions={[[
-       void getCurve(vectorn const& time, matrixn& points);
-       void getFirstDeriv(vectorn const& time, matrixn& points);
-       void getSecondDeriv(vectorn const& time, matrixn& points);
-     ]]}
-   },
-   {
-     name='boolN',
-     ctors={'()','(int n)'},
-     -- any C++ code to include 
-     wrapperCode=[[
-      static boolNView _range(boolN const& a, int start, int end)
-      { return boolNView (a._vec, a._start+start, a._start+end);  }
-     ]],
-     -- to register non-member functions as member
-     staticMemberFunctions={[[                                                                             
-      boolNView _range(boolN const& a, int start, int end) @ range
-                          ]]},
-     memberFunctions={[[
-         bitvectorn bit() const
-         void assign(const boolN& other)
-         void assign(const boolN& other)
-         void set(int i, bool b)
-         void setAllValue(bool b)
-         virtual void resize(int n)
-         int size();
-         TString output() @ __tostring
-         bool operator[](int i) @ __call
-      ]]}
-    },
-    modules={
-       { name='string',
-         functions={[[
-              int strcmp(const char* a, const char* b); // string.strcmp in lua
-         ]]}
-       },
-       { name='_G',
-         functions={[[
-              int strcmp(const char* a, const char* b); // strcmp in lua
-         ]]}
-       }
-     }
-}
-dofile('other_input.lua') -- assume this file contains a table bindTarget2
-function generate() 
-  buildDefinitionDB(bindTarget, bindTarget2) -- input contain all classes to be exported.
-  -- bind code can be split into multiple .h, .cpp files for simplifying dependencies
-  -- write the first header file (that exposes classes in table bindTarget)
-  write([[
-                  class boolNView;
-                  class boolN;
-                  class NonuniformSpline;
-  ]])
-  writeHeader(bindTarget) 
-  flushWritten('bind.h')
-  -- header file doesn't contain #include at all. Forward declarations are all it needs.
-  -- write a cpp file
-  writeIncludeBlock() -- luna.h and such
-  write('#include "bind.h"') 
-
->  write([[
-    #include "stdafx.h"
-    #include "spline.h"
-    #include "boolN.h"
-  ]])
-  writeDefinitions(bindTarget, 'Register_bind') -- input can be non-overlapping subset of entire bindTarget 
-  flushWritten('bind.cpp') 
-  writeIncludeBlock() 
-  writeHeader(bindTarget2) -- bind declarations can directly go into bind2.cpp
-  writeDefinitions(bindTarget2, 'Register_bind2')  
-  flushWritten('bind2.cpp')
-end
+	bindTarget={
+	  classes={
+	   {
+		 name='math.NonuniformSpline', -- lua name
+		 className='NonuniformSpline', -- c++ name
+		 ctors={'(vectorn const&, const matrixn&)', '()'}, -- constructors
+		 memberFunctions={[[
+		   void getCurve(vectorn const& time, matrixn& points);
+		   void getFirstDeriv(vectorn const& time, matrixn& points);
+		   void getSecondDeriv(vectorn const& time, matrixn& points);
+		 ]]}
+	   },
+	   {
+		 name='boolN',
+		 ctors={'()','(int n)'},
+		 -- any C++ code to include 
+		 wrapperCode=[[
+		  static boolNView _range(boolN const& a, int start, int end)
+		  { return boolNView (a._vec, a._start+start, a._start+end);  }
+		 ]],
+		 -- to register non-member functions as member
+		 staticMemberFunctions={[[                                                                             
+		  boolNView _range(boolN const& a, int start, int end) @ range
+							  ]]},
+		 memberFunctions={[[
+			 bitvectorn bit() const
+			 void assign(const boolN& other)
+			 void assign(const boolN& other)
+			 void set(int i, bool b)
+			 void setAllValue(bool b)
+			 virtual void resize(int n)
+			 int size();
+			 TString output() @ __tostring
+			 bool operator[](int i) @ __call
+		  ]]}
+		},
+		modules={
+		   { name='string',
+			 functions={[[
+				  int strcmp(const char* a, const char* b); // string.strcmp in lua
+			 ]]}
+		   },
+		   { name='_G',
+			 functions={[[
+				  int strcmp(const char* a, const char* b); // strcmp in lua
+			 ]]}
+		   }
+		 }
+	}
+	dofile('other_input.lua') -- assume this file contains a table bindTarget2
+	function generate() 
+	  buildDefinitionDB(bindTarget, bindTarget2) -- input contain all classes to be exported.
+	  -- bind code can be split into multiple .h, .cpp files for simplifying dependencies
+	  -- write the first header file (that exposes classes in table bindTarget)
+	  write([[
+					  class boolNView;
+					  class boolN;
+					  class NonuniformSpline;
+	  ]])
+	  writeHeader(bindTarget) 
+	  flushWritten('bind.h')
+	  -- header file doesn't contain #include at all. Forward declarations are all it needs.
+	  -- write a cpp file
+	  writeIncludeBlock() -- luna.h and such
+	  write('#include "bind.h"') 
+	  write([[
+		#include "stdafx.h"
+		#include "spline.h"
+		#include "boolN.h"
+	  ]])
+	  writeDefinitions(bindTarget, 'Register_bind') -- input can be non-overlapping subset of entire bindTarget 
+	  flushWritten('bind.cpp') 
+	  writeIncludeBlock() 
+	  writeHeader(bindTarget2) -- bind declarations can directly go into bind2.cpp
+	  writeDefinitions(bindTarget2, 'Register_bind2')  
+	  flushWritten('bind2.cpp')
+	end
 
 Usage
 =
