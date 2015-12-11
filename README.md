@@ -264,7 +264,7 @@ Notes for luabind users
 
 >- **luabind:**
 		luabind::def("createVRMLskin", &RE::createVRMLskin,luabind::adopt(luabind::result))
-- **luna-gen: **
+- **luna-gen:**
 		PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adopt=true; 
 
 ----------
