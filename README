@@ -1,4 +1,5 @@
-= Files =
+Files 
+=====
 	test_luna/*.lua : self-contained examples (run make.sh to run) 
 			These examples use CMake. If you don't want to use CMake, see "examples/gen.sh". 
 
@@ -13,11 +14,13 @@
 	
 	see examples/README for details. This file explains how to call a lua function from c.
 
-= Supported type =
+Supported types
+=============
 	class   ( corresponds to a userdata that has a metatable )
-	module  ( corresponds to a table. Multiple modules can have the same name. )
+	module  ( corresponds to a namespace in cpp and a table in lua. Multiple modules can have the same name. )
 
-= Supported class properties =
+Supported class properties
+======================
 	name
 	className
 	inheritsFrom
@@ -39,44 +42,48 @@
 	write_properties
 	customFunctionsToRegister : luna-gen can register a custom function 'int funcName(lua_State* L)'
 
-	Sorry for the lack of documentations. 
 	Search for keyword in examples to see its usage, or ask me so that I can update this document. 
 
-= Notes for luabind users =
+Notes for luabind users
+===================
 
-1. luabind:
+>- **luabind:**
 		luabind::def("createVRMLskin", &RE::createVRMLskin,luabind::adopt(luabind::result))
-   luna-gen: 
+- **luna-gen: **
 		PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adopt=true; 
 
-
-2. luabind:
+----------
+>- **luabind:**
 		.enum_("constants")
 		[
 			luabind::value("EULER",OpenHRP::DynamicsSimulator::EULER)
 		]
-   luna-gen:
-		enums={
-		{"EULER", "(int)OpenHRP::DynamicsSimulator::EULER"},
-		}
+- **luna-gen:**
+	enums={
+	{"EULER", "(int)OpenHRP::DynamicsSimulator::EULER"}, 
+	}
 
-3. luabind:
+----------
+>- **luabind:**
 		.scope_[..] 
-   luna-gen:
+- **luna-gen:**
         staticMemberFunctions={[[..]]}
 
-4. luabind:
+----------
+
+>- **luabind:**
 		#ifndef AAA
 			luabind::def("abc"...)
 		#endif
-   luna-gen:
+- **luna-gen:**
 		void abc() @ ;ifndef=AAA;
- 
-5. luabind:
+
+---------- 
+>- **luabind:**
 		#ifndef AAA
 		    luabind::class_<asdf>("asdf")[...]
 		#endif
-   luna-gen:
+- **luna-gen:**
        {
 		   name='asdf',
 		   ifndef='AAA',
@@ -85,3 +92,5 @@
 
 
 taesoobear@gmail.com
+
+
