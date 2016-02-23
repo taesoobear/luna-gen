@@ -7,6 +7,10 @@ if source_path=='' then source_path='.' end
 if math.mod ==nil then
 	math.mod=function (a,b) return a%b end 
 end
+if _VERSION=='Lua 5.2' then
+	print('lua 5.2 is not supported')
+end
+
 do -- user configurations : all these can be changed in input file or from command line argument.
 	verbosecpp=true  -- easy for debugging cpp compilation error
 	verbose=false
@@ -486,7 +490,12 @@ do -- utility functions
 			local part2=string.sub(fn, e,s2)
 			
 			part1=string.trimRight(part1)
-			local a,b=os.rightTokenize(part1, '[%s&%*]')
+			local a,b,sepStr=os.rightTokenize(part1, '[%s&%*]', true)
+			if sepStr=='&' and string.sub(a, -9)=='operator&' then
+				a=string.sub(a, 1,-10)
+				b='operator&'..b
+			end
+
 
 			local ccc=string.find(b,'::')
 			local luaname=b
@@ -674,6 +683,7 @@ do -- utility functions
 		str=string.gsub(str, '>', '> ')
 		str=string.trimLeft(str)
 		str=string.trimRight(str)
+
 		if string.sub(str,-1)==';' then str=string.sub(str, 1,-2) end
 		if (string.sub(str,1,1)~='(' or string.sub(str,-1)~=')') then
 			lgerror('ctor', str, 'in unacceptable format. (ctor definition should start by ( and finish by ))')
@@ -721,7 +731,7 @@ do -- utility functions
 					end
 				end
 			end
-			if gmatched==nil then lgerror('gmatched==nil :',arg) end
+			if gmatched==nil then lgerror('gmatched==nil arg:',arg) end
 			local ntc=normalizedClassNameToClassName
 			if name then
 				args[iarg]={ c=ntc(gen_lua.type_names[gmatched]), t=table.concat(array.map(ntc,tokens),' ', 1,#tokens-1), n=name}
@@ -1044,6 +1054,9 @@ function buildDefinitionDB(...)
 					local dc2='static void _property_set_'..cp.n..'('..cppclass_name..' & a, '..cp.t..' b)'
 					local wc2='inline '..dc2..'{ a.'..cp.n..'=b;}'
 					luaclass.wrapperCode=luaclass.wrapperCode..wc..wc2..'\n'
+					if type(luaclass.staticMemberFunctions)=='string' then
+						luaclass.staticMemberFunctions={luaclass.staticMemberFunctions}
+					end
 					array.pushBack(luaclass.staticMemberFunctions,dc..'\n'..dc2..'\n')
 				end
 			end
@@ -1159,6 +1172,7 @@ function buildDefinitionDB(...)
 			luaclass.memberFunctions=rectifyFunctions(luaclass.memberFunctions)
 
 			for i,v in ipairs(luaclass.memberFunctions) do
+				if verbose then print("parsing "..v) end
 				local vv=parseMemberFunction(v)	
 				luaclass.memberFunctions[i]=vv
 			end
@@ -1669,7 +1683,7 @@ function writeDefinitions(bindTarget, bindfunc_name, customScript)
 	addLine('}')
 end
 
-do -- main
+function main() -- main
 	if #arg>=1 then
 		local input_file=arg[1]
 
@@ -1691,4 +1705,8 @@ do -- main
 		print('usage: lua luna_gen.lua input_file [options]')
 		print(' e.g. lua luna_gen.lua a.lua verbosecpp=true') 
 	end
+end
+
+if string.sub(arg[0],-12)=='luna_gen.lua' then
+	main()
 end
