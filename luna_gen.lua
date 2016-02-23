@@ -1646,6 +1646,9 @@ function writeDefinitions(bindTarget, bindfunc_name, customScript)
 				__luna.overwriteMethodsFrom(]]..	luaclass_name..[[, __luna.]].. luaclass.uniqueLuaClassname..[[)
 				]]))
 			else
+				if select(1, string.find(luaclass_name, '<')) then
+					lgerror('set luaclass_name different from cpp name using luaname="newname", cppname="'..luaclass_name..'". \nInvalid luaclass name: '..luaclass_name)
+				end
 				addLine('	luna_dostring(L, "'..luaclass_name..'=__luna.'..luaclass.uniqueLuaClassname..'");')
 				addLine(codeDostring([[
 				__luna.]]..luaclass.uniqueLuaClassname..[[.luna_class=']]..luaclass_name..[[']]))
