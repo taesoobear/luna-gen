@@ -156,10 +156,10 @@ Parser restrictions
 
  - So if you want to export 'int* MyClass::add(int &a)', write a wrapper code such as
 
- > wrapperCode=[[ static int add2(MyClass & self, int a) { return *(self.add(a));}]],
-          staticMemberFunctions={[[
-               static int add2(MyClass& self, int a) @ add
-          ]]} -- "add2" is renamed to "add" in lua
+ > wrapperCode=[[ static int add2(MyClass & self, int a) { return *(self.add(a));}]],  
+          staticMemberFunctions={[[   
+               static int add2(MyClass& self, int a) @ add   
+          ]]} -- "add2" is renamed to "add" in lua   
 
 how to download, and run test programs
 =
