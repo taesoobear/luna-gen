@@ -125,26 +125,25 @@ Usage
 
 Parser restrictions
 =
- -  default parameters are supported by function overloading.
+ - Default parameters are supported by function overloading.
 
-  >   (x) memberFunctions={[[ int add(int a, int b=0);]]}
-     (O) memberFunctions={[[ int add(int a, int b);
-                             int add(int a);]]}
+  >  (x) memberFunctions=[[ int add(int a, int b=0);]]
+     (O) memberFunctions=[[ int add(int a, int b);  
+                             int add(int a);]]
                              
- - a member function definition should be in a single line
+ - A member function definition should be in a single line
 
- >    (X) memberFunctions={ [[
-         int add(int a, 
-                 int b) 
-         ]]}
+ >   (O) memberFunctions=[[ int add(int a, int b) ]]
+     (X) memberFunctions=[[ int add(int a,   
+                               int b) ]]
 
- -   do not include function body.
+ - Do not include function body in the input lua file.
 
  >   (X) memberFunctions={ 'int add(int a, int b) { return a+b;}' }
      (O) memberFunctions={ 'int add(int a, int b)' }
      (O) memberFunctions={ 'int add(int a, int b); // add a and b' }
 
- - do not input or return pointer/reference to numbers because lua native types are treated as values (as opposed to references)
+ - Do not input or return pointer/reference to numbers because lua native types are treated as values (as opposed to references)
 
  >    (X) memberFunctions={ 'int* add(int &a)'}
       (O) memberFunctions={ 'int add(int a)'}
