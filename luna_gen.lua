@@ -8,7 +8,7 @@ if math.mod ==nil then
 	math.mod=function (a,b) return a%b end 
 end
 if _VERSION=='Lua 5.2' then
-	print('lua 5.2 is not supported')
+	print('lua 5.2 is not yet supported!')
 end
 
 do -- user configurations : all these can be changed in input file or from command line argument.
@@ -748,7 +748,7 @@ do -- utility functions
 				end
 				nn=string.gsub(nn, '%s+','')
 				if nn~='' then
-					lgerror('undefined type "'..aa.t..'" detected while parsing "'..str..'"!\n (did you mean '..aa.c..'? what is '..nn..'?) \n '..gen_lua.type_error_msg)
+					lgerror('undefined type "'..aa.t..'" detected while parsing "'..str..'"!\n (did you mean '..aa.c..'? what is '..nn..'? Do not use variable names containing modifiers such as "const" or "virtual". ) \n '..gen_lua.type_error_msg)
 				end
 			end
 		end

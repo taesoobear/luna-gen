@@ -6,7 +6,7 @@ bindTarget={
 			-- don't set inheritedFrom='luna_wrap_object' here
 			-- Instead, use the following to enable inheritance from lua.
 			isLuaInheritable=true, -- without this, this class cannot be inherited from lua. This exposes a member function new_modified_T .
-			globalWrapperCode=[[  // this goes into cpp file
+			globalWrapperCode=[[  // this goes into the output cpp file
 			std::list<ParentCPP*> g_obj;
 			class ParentCPP : public luna_wrap_object {
 				public:
@@ -154,13 +154,16 @@ function generate()
 	write("}")
 	flushWritten(input_filepath..'/generated/'..string.sub(input_filename,1,-4)..'cpp')
 end
--- implementation note:
--- internal type checking is done by "int uniqueID;" comparision. (Fast!)
--- all child class reuses parent's uniqueID.
--- all child's pointer is internally static-casted to the uppermost parent's type.
--- this doesn't mean metatable is shared among derived classes. 
--- (derived classes have independent metatable for overloading, etc)
--- lua class can inherit from c++ side.
--- (as long as the lua class is not inherited by another lua class.)
--- c++ side can inherit from lua class, but not as trivial.
--- (this can be implemented using lua call similar to the message passing shown above)
+-- IMPLMENTATION NOTE:
+
+-- Internal type checking is done by "int uniqueID;" comparision. 
+-- This is faster than string comparisons used in other tools.
+-- All child classes reuse parents' uniqueID.
+-- So the type checking is less strict than other tools.
+-- All child's pointers are internally static-casted to the uppermost parent's type.
+-- This doesn't mean that metatables are shared among derived classes. 
+-- (derived classes still have independent metatables for overloading, etc)
+-- Lua classes can inherit from c++ classes
+-- (as long as the lua class is not inherited from an another lua class.)
+-- c++ classes can inherit from lua classes, but it is not as easy.
+-- (this can be implemented using lua call similar to the message passing example shown above.)

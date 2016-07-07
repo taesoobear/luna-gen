@@ -1,14 +1,17 @@
-This example show how to use multiple definition files
+This example shows how to use multiple definition files in a program.
+There are other examples in the test_luna folder.
 
 luna_mainlib.lua contains binding definitions for LIBOGRE
 luna_pdfwin.lua  depends on baselib and mainlib
 
-run "gen.sh" and see the "generated" folder
+Read and run "gen.sh", and see the "generated" folder.
 
-the numbers in the generated header files denote the line number of luna_gen.lua
+The numbers in the generated header files denote the line number of luna_gen.lua
 
-//to use the generated files,
-//just declare
+To use the generated files,
+just declare the functions.
+
+// like this.
 void Register_baselib(lua_State* L);
 void Register_mainlib(lua_State* L);
 void Register_pdfwin(lua_State* L);
@@ -31,12 +34,12 @@ static void _initLuaEnvironment(RightPanel* win)
 }
 
 
-// To use pcall (that launches a debugger when fails)
+// To use pcall (that launches a debugger when the script fails)
 static int errorFunc=0;
 inline static void checkErrorFunc(lunaStack&l)
 {
 	if (errorFunc==0){
-		l.getglobal("dbg", "console");
+		l.getglobal("dbg", "console"); // dbg.console() is defined in mylib.lua
 		errorFunc=l.gettop();
 		if (errorFunc==0) printf("Warning! cannot find the error function!\n");
 	}
@@ -49,9 +52,14 @@ static lua_State* loadScript(RightPanel* win)
 		printf("error\n")
 
 	lunaStack l(L);
-	// assuming input.lua contains "require('mylib')"
-	// let's use dbg.console() as the error function.
+	// assuming input.lua contains "require('mylib')",
+	// now let's use dbg.console() as the error function.
 	checkErrorFunc(l);
+
+
+	// test using a faulty lua function call:
+	// returnvalue=luafunction_name("param1", "param2");
+
 	l.getglobal("luafunction_name");
 	l << "param1";
 	l << "param2";
@@ -66,7 +74,7 @@ input.lua:
 
 require('mylib')
 function luafunction_name(a,b)
-	win:somefunction(a,b)
+	win:somefunction(a,b) // this may cause an exception.
 	return 0
 end
 
