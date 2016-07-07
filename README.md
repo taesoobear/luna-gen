@@ -127,7 +127,9 @@ Parser restrictions
 =
  - Default parameters are supported by function overloading.
 
+
   >  (x) memberFunctions=[[ int add(int a, int b=0);]]   
+ 
   >  (O) memberFunctions=[[ int add(int a, int b);  
                              int add(int a);]]
                              
