@@ -78,12 +78,14 @@ function(add_luna_test x)
 	endif()
 endfunction()
 
+add_luna_test("simple")
 add_luna_test("garbage_collection")
 add_luna_test("var_arg")
 add_luna_test("property")
 add_luna_test("inheritance")
 add_luna_test("operator_overloading")
 add_luna_test("profiler")
+add_luna_test("inheritance_from_lua")
 #add_luna_test("table")
 
 

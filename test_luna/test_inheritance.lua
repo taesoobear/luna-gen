@@ -162,8 +162,7 @@ end
 -- So the type checking is less strict than other tools.
 -- All child's pointers are internally static-casted to the uppermost parent's type.
 -- This doesn't mean that metatables are shared among derived classes. 
--- (derived classes still have independent metatables for overloading, etc)
+-- Derived classes still have independent metatables for overloading, etc.
 -- Lua classes can inherit from c++ classes
 -- (as long as the lua class is not inherited from an another lua class.)
--- c++ classes can inherit from lua classes, but it is not as easy.
--- (this can be implemented using lua call similar to the message passing example shown above.)
+-- c++ classes can also inherit from lua classes, and see test_inheritance_from_lua.lua for examples.

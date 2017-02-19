@@ -23,18 +23,18 @@ These functionalities have been well-tested on multiple research projects that I
 
 Advantages over alternatives
 ========
--    It's about 3 times faster than luabind 9.1 (benchmarked in ubuntu linux.)
--    As fast as best hand-written codes to my knowledge.
--    Output C++ codes are human-readable and thus easy to debug.
+-    It's about three times faster than luabind 9.1 (benchmarked in ubuntu linux.)
+-    As fast as the best hand-written codes to my knowledge.
+-    Output C++ codes are human-readable and thus are easy to debug.
 -    Minimul use of template-programming for faster compilation speed.
--    Much more flexible than tolua++ because of the use of lua scripting language for input file format
+-    Much more flexible than tolua++ because of the use of lua scripting language for input file format.
 -    Written in native lua.
--    Include a good debugger. (dbg.console() - type h for help. examples/README)
--    Easy to use. See an example below and the samples in the test_luna folder
+-    Include a good debugger. (dbg.console() - type h for help. lua test_debug_console.lua. Read examples/README also.)
+-    Easy to use. See an example below and the samples in the test_luna folder (especially test_simple.lua).
 -    Blend very well with native Lua API calls.
--    No C++ RTTI (run-time type information) used
+-    No C++ RTTI (run-time type information) used.
 -    No boost dependency. Output codes depend only on luna.h/luna.cpp and liblua.
--    built in profiler to measure how much time is used in lua and C++, respectively. (enabled only when gen_lua.use_profiler is set true) 
+-    the built-in profiler to measure how much time is used in lua and C++, respectively. (enabled only when gen_lua.use_profiler is set true) 
 
 Example
 ===
@@ -222,12 +222,13 @@ Files
 =====
 	test_luna/*.lua : self-contained examples (run make.sh to run) 
 			These examples use CMake. If you don't want to use CMake, see "examples/gen.sh". 
+      Use make.bat in windows.
 
 	luna_gen.lua:  the code generator. 
 
 	mylib*.lua: the code generator depends on these files, but output codes do not.
 			luna.h/cpp: the output code depends only on these files. 
-			luna.h is worth reading (at least lunaStack class).
+			luna.h is worth reading. (especially the lunaStack class is well-documented).
 
 	examples/*.lua : real-world examples that use all available functionalities (run gen.sh to convert.)
 				   The real-world examples do not run on your system because of missing dependencies.

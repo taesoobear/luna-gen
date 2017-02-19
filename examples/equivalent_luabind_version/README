@@ -1,11 +1,20 @@
 I was a long time luabind user but I often experienced strange memory bugs that are very hard to debug.
-When I noticed there are some subtle problems, it was already too late and I am absolutely convinced 
-that there was no way that I can debug those problems. Projects were huge, and those bugs were not reproducible
-in small programs. It seemed that they are related to luabind though. 
-So recently I developed luna-gen and migrated to it.
-And all of those strange bugs are gone. 
+Probably the bugs were in my codes, but the bugs are related to some dangling
+pointers and I am convinced that there was no way that I can debug those problems. 
+Projects were huge, and those bugs were not reproducible in small programs. It seemed that they are related to luabind though. 
+So recently I developed luna-gen and migrated to it. And all of those strange bugs are gone. 
 
-I am not suggesting that luabind is buggy, which I don't know for sure. 
+I am not suggesting that luabind is buggy, which I don't think so.
 What I think is that luabind automates too much by default, and it complicates things. 
+Using luabinds, memory bugs are caught long after problems happen.
+I chose to simplify the memory dependency in luna-gen.
+For example,
+
+a=A()  -- A is a cpp class.
+b=a.c
+a=nil 
+collect_garbage()-- "a" will be garbage-collected if you use luna-gen, but if
+you use luabind it is unclear when a is collected. 
+print(b) -- will immediately produce a memory error if you use luna-gen. 
 
 I upload here the original luabind version of the bind codes so that you can compare how to use luabind and luna-gen.

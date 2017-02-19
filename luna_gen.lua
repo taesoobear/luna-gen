@@ -143,12 +143,20 @@ do -- utility functions
 	end
 	
 	function loadDefinitionDB(filename)
-		local db=loadstring('return '..util.readFile(filename))()
+		local fcn,msg=loadstring('return '..util.readFile(filename))
+		if not fcn then lgerror(msg) end
+		local db=fcn()
 		array.concat(gen_lua.cpp_contents, db.cpp_contents)
 		array.concat(gen_lua.complex_type_names, db.complex_type_names)
 		array.concat(gen_lua.type_names, db.type_names)
 		table.mergeInPlace(gen_lua.luna_types, db.luna_types)
 		table.mergeInPlace(gen_lua.usedHashValue, db.usedHashValue)
+		if(db.autoConversion_rectified) then
+			if not gen_lua.autoConversion_rectified then
+				gen_lua.autoConversion_rectified={} 
+			end
+			table.mergeInPlace(gen_lua.autoConversion_rectified, db.autoConversion_rectified)
+		end
 		array.concat(gen_lua.getNameSpace, db.getNameSpace)
 		--array.concat(gen_lua.getNameSpaceCode, db.getNameSpaceCode)
 		gen_lua.moduleUniqueId=gen_lua.moduleUniqueId+db.moduleUniqueId+1
@@ -191,6 +199,7 @@ do -- utility functions
 		db.number_types=gen_lua.number_types
 		db.enum_types=gen_lua.enum_types
 		db.boolean_types=gen_lua.boolean_types
+		db.autoConversion_rectified=gen_lua.autoConversion_rectified
 		local str=table.tostring(db)
 		print('generating '..filename)
 		util.writeFile(filename, str)
@@ -319,8 +328,8 @@ do -- utility functions
 						if inputToCtor=='self.operator-()' then
 							inputToCtor='-self'
 						end
-						addLine('\t'..vv.returnType.t..'* ret=new '..vv.returnType.t..'('..inputToCtor..');')
-						addLine('	Luna<'..cpp_parent_classname..' >::push(L,ret,'..tostring(adopt)..',"'..cp.uniqueLuaClassname..'");')
+						addLine('\t::'..vv.returnType.t..'* ret=new ::'..vv.returnType.t..'('..inputToCtor..');')
+						addLine('	Luna< ::'..cpp_parent_classname..' >::push(L,ret,'..tostring(adopt)..',"'..cp.uniqueLuaClassname..'");')
 						if catch then addLine(gen_lua.catch_string) end
 					end
 				end
@@ -379,6 +388,19 @@ do -- utility functions
 		else
 			array.pushBack(gen_lua.cpp_contents, line)
 		end
+	end
+	function isAutoConversionType(ia) 
+		local a=gen_lua.autoConversion_rectified
+		if a and a[normalizeClassName(ia.c)] then
+			return true
+		end
+		return false
+	end
+	function autoConversionType(ia)
+		local a=gen_lua.autoConversion_rectified
+		assert(a)
+		local convert_to= a[normalizeClassName(ia.c)]
+		return convert_to
 	end
 	function isLunaType(ia) 
 		if ia.t==nil then lgerror('Error! isLunaType') end
@@ -553,6 +575,33 @@ do -- utility functions
 				end	
 			elseif isBooleanType(ia) then
 				addLine('	'..ia.t..' '..ia.n..'=('..ia.t..')lua_toboolean(L,'..i..');')
+			elseif isAutoConversionType(ia) then
+				local cinfo=autoConversionType(ia)
+				local ia2={c=normalizeClassName(cinfo.convertTo)}
+				ia2.t=string.gsub(ia.t, ia.c, ia2.c)
+				--string.gsub(cinfo.forward,'%%', ...)
+				if not isLunaType(ia2) then
+					lgerror('Unsupported types for auto-conversion:', ia.c,'->',ia2.c)
+				else
+					--local t=string.gsub(ia.t,'%&','') -- remove reference
+					local t=ia2.t
+
+					local cp=findLunaClassProperty(ia2)
+					local cppclass_name=normalizedClassNameToClassName(cp.className)
+					local cppinterface_name=genInterfaceName(cp)
+					local cpp_parent_classname=normalizedClassNameToClassName(cp.uppermostParent.className)
+					local t_modifiers=string.gsub(t, normalizedClassNameToPattern(normalizeClassName(ia2.c)), '')
+					if select(1,string.find(t_modifiers,'*')) then
+						addLine('	'..t..' '..ia.n..'=static_cast<'..cppclass_name..' *>(Luna<'..cpp_parent_classname..' >::check(L,'..i..'));')
+						lgerror('this case has not yet been implemented')
+					else
+						local ii=string.find(ia2.t,'%&') 
+						if not ii then t=t..'&' end -- add reference
+						addLine('	'..t..' '..ia.n..'__'..'=static_cast<'..cppclass_name..' &>(*Luna<'..cpp_parent_classname..' >::check(L,'..i..'));')
+						-- here, modifiers such as const& are dropped. ia.t contains modifiers, but ia.c does not.
+						addLine('	'..ia.c..' '..ia.n..'='..string.gsub(cinfo.backward,'%%%%',ia.n..'__')..';')
+					end
+				end
 			else
 				lgerror('Unknown or unsupported argument type: ',table.tostring(ia))
 			end
@@ -591,6 +640,13 @@ do -- utility functions
 				if debug_printf then
 					addLine('printf("lua_isboolean:%d\\n",lua_isstring(L,'..i..'));')
 				end
+			elseif isAutoConversionType(ia) then
+				local luaclass=findLunaClassProperty({c=autoConversionType(ia).convertTo})
+				if debug_printf then
+					addLine('printf("unique_id:%d=='..luaclass.uniqueID..'\\n",luna_t::get_uniqueid(L,'..i..'));')
+				end
+				assert(luaclass.uppermostParent.uniqueID)
+				addLine('	if( Luna<void>::get_uniqueid(L,'..i..')!='..luaclass.uppermostParent.uniqueID..') return false; // '..normalizedClassNameToClassName(luaclass.uppermostParent.className))
 			else
 				lgerror('Unknown or unsupported argument type: ',table.tostring(ia))
 			end
@@ -719,6 +775,7 @@ do -- utility functions
 					then
 					if i==#tokens then
 						name=tokens[i]
+					--elseif autoConversion then dbg.console()
 					else
 						lgerror('Error unknown type name : '..normalizedClassNameToClassName(args[iarg])..'\n'..gen_lua.type_error_msg)
 					end
@@ -777,8 +834,10 @@ do -- utility functions
 							local s,e,cc1,cc2=string.find(ren,'%;([^=]+)=([^%;]+)%;')
 							if s==nil then break end
 							options[cc1]=cc2
-							ren=string.trimSpaces(string.gsub(ren,'%;[^=]+=[^%;]+%;',''))
+							ren=string.trimSpaces(string.sub(ren, 1,s-1)..string.sub(ren, e+1)..';')
 						end
+						ren=string.trimSpaces(string.gsub(ren, ';',''))
+						if #options>0 then printTable(options) end
 						if #ren~=0 then
 							options.rename=ren
 						end
@@ -882,6 +941,16 @@ function buildDefinitionDB(...)
 	array.concat(gen_lua.type_names, array.map(normalizeClassName, gen_lua.enum_types))
 	array.concat(gen_lua.type_names, array.map(normalizeClassName, gen_lua.string_types))
 	array.concat(gen_lua.type_names, array.map(normalizeClassName, gen_lua.boolean_types))
+	if autoConversion then
+		if not gen_lua.autoConversion_rectified then
+			gen_lua.autoConversion_rectified={} 
+		end
+		for k,v in pairs(autoConversion) do
+			local ncn=normalizeClassName(k)
+			array.pushBack(gen_lua.type_names, ncn)
+			gen_lua.autoConversion_rectified[ncn]=v
+		end
+	end
 	gen_lua.defNameSpaceCode=processNamespaces(namespaces, '_G.')
 	-- 1. collect class names
 	for iluaclass, luaclass in ipairs(bindTarget.classes) do

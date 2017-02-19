@@ -1,3 +1,4 @@
+-- Taesoo Kwon.
 
 if false then -- debug mode functions. (significant performance overhead when enabled.)
 	ipairs_old=ipairs
@@ -31,6 +32,10 @@ function print(...)
 	local a={...}
 	if a[1]==700000 then
 		dbg.console() 
+	elseif type(a[1])=='string' then
+		if select(1,string.find(a[1], 'keyframe,0,')) then
+			dbg.console()
+		end
 	end
 	print2(...)
 end
@@ -1504,7 +1509,7 @@ function table.toHumanReadableString(t, spc)
 	-- string t=util.convertFromLuaNativeTable(table.fromstring(a)) 
 	-- convert back from the string)
 
-	local out="{"
+	local out="{\n"
 
 	local N=table.getn(t)
 	local function packValue(v)
@@ -1512,82 +1517,56 @@ function table.toHumanReadableString(t, spc)
 		if tv=="number" or tv=="boolean" then
 			return tostring(v)
 		elseif tv=="string" then
+			v=string.gsub(v, '"', '\\"')
 			return '"'..tostring(v)..'"'
 		elseif tv=="table" then
 			return table.toHumanReadableString(v,spc+4)
+		elseif tv=="userdata" then
+			return v:toLuaString()
 		end
 	end
 
-	for i,v in ipairs(t) do
-		out=out..packValue(v)..", "
+	local spcc=string.rep(' ',spc)
+	if N>=1 then
+		local temp={}
+		for i,v in ipairs(t) do
+			table.insert(temp, packValue(v)..", ")
+		end
+		out=out..spcc.. table.concat(temp, "") ..'\n'
 	end
-
+	local temp={}
 	for k,v in pairsByKeys(t) do
-
 		local tk=type(k)
 		local str_k
 		if tk=="string" then
-			str_k="['"..k.."']="
-			out=out..string.rep(' ',spc)..str_k..packValue(v)..',\n '
+			local a,b=string.find(k, '[%w_]*')
+			if b==string.len(k) then
+				str_k=k.." ="
+			else
+				str_k="['"..k.."']="
+			end
+			table.insert(temp,spcc..str_k..packValue(v)..',\n')
 		elseif tk~="number" or k>N then	 
 			str_k='['..k..']='
-			out=out..string.rep(' ',spc)..str_k..packValue(v)..',\n '
+			table.insert(temp,spcc..str_k..packValue(v)..',\n')
 		end
 	end
-	return out..'}\n'
+	out=out..table.concat(temp,"")
+	return out..string.rep(' ', spc-4)..'}'
 end
+
 function table.toIndentedString(t, level)
-	-- does not check reference. so infinite loop can occur.  to prevent
-	-- such cases, use pickle() or util.saveTable() But compared to pickle,
-	-- the output of table.tostring is much more human readable.  if the
-	-- table contains userdata, use table.tostring2, fromstring2 though it's
-	-- slower.  (it preprocess the input using
-	-- util.convertToLuaNativeTable 
-	-- a=table.tostring(util.convertToLuaNativeTable(t)) convert to
-	-- string t=util.convertFromLuaNativeTable(table.fromstring(a)) 
-	-- convert back from the string)
-
-	local out={}
-	array.pushBack(out, '{')
-	level=level or 0
-
-	local N=table.getn(t)
-	local function packValue(v)
-		local tv=type(v)
-		if tv=="number" or tv=="boolean" then
-			return tostring(v)
-		elseif tv=="string" then
-			return '"'..tostring(v)..'"'
-		elseif tv=="table" then
-			return table.toIndentedString(v,level+1)
-		else 
-			return tostring(v)
+	do
+		local out=string.lines(table.toHumanReadableString(t))
+		local spc=string.rep('    ', level)
+		for i=1 ,#out do
+			out[i]=spc..out[i]
 		end
+		local aa=table.concat(out, '\n')
+		return aa..'\n'
 	end
-
-	for i,v in ipairs(t) do
-		array.pushBack(out, '\t'.. packValue(v)..",")
-	end
-
-	for k,v in pairsByKeys(t) do
-
-		local tk=type(k)
-		local str_k
-		if tk=="string" then
-			str_k="\t['"..k.."']="
-			array.pushBack(out,str_k..packValue(v)..', ')
-		elseif tk~="number" or k>N then	 
-			str_k='\t['..k..']='
-			array.pushBack(out,str_k..packValue(v)..', ')
-		end
-	end
-	array.pushBack(out,'}')
-	local spc=''
-	for i=1,level do
-		spc=spc..'\t'
-	end
-	return spc..table.concat(out,'\n')
 end
+
 function table.tostring(t)
 	-- does not check reference. so infinite loop can occur.  to prevent
 	-- such cases, use pickle() or util.saveTable() But compared to pickle,
@@ -1607,6 +1586,7 @@ function table.tostring(t)
 		if tv=="number" or tv=="boolean" then
 			return tostring(v)
 		elseif tv=="string" then
+			v=string.gsub(v, '"', '\\"')
 			return '"'..tostring(v)..'"'
 		elseif tv=="table" then
 			return table.tostring(v)
@@ -1637,6 +1617,8 @@ end
 function util.saveTableToLua(tbl, filename)
 	util.writeFile(filename, table.toHumanReadableString(tbl))
 end
+-- this is slow and works only for a small subset of userdata,
+-- BUT, this produces human-readable/editable lua script.
 function table.toPrettyString(t, maxLen)
 	if maxLen<0 then
 		return ' ...'
@@ -1649,7 +1631,8 @@ function table.toPrettyString(t, maxLen)
 		if tv=="number" or tv=="boolean" then
 			return tostring(v)
 		elseif tv=="string" then
-			return '"'..tostring(v)..'"'
+			local nv=string.gsub(v,'"', '\\\\"')
+			return '"'..nv..'"'
 		elseif tv=="table" then
 			return table.toPrettyString(v,maxLen)
 		else 
@@ -1670,6 +1653,9 @@ function table.toPrettyString(t, maxLen)
 		local str_k
 		if tk=="string" then
 			str_k="['"..k.."']="
+			out=out..str_k..packValue(v, maxLen-#out)..', '
+		elseif tk=='table' then
+			str_k='[ table? ]='
 			out=out..str_k..packValue(v, maxLen-#out)..', '
 		elseif tk~="number" or k>N then	 
 			str_k='['..k..']='
