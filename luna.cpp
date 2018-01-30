@@ -102,6 +102,27 @@ void luna_derived_object::push(luna_derived_object const& o)
 lunaStack::~lunaStack()
 {
 }
+std::string lunaStack::lunaType(int i)
+{
+	if(luaType(i)==LUA_TUSERDATA)
+	{
+		lua_getmetatable(L,i);
+		if(!lua_isnil(L,-1))
+		{
+			lua_pushstring(L,"luna_class");
+			lua_gettable(L,-2);
+			if(!lua_isnil(L,-1))
+			{
+				std::string t=lua_tostring(L,-1);
+				lua_pop(L,2);
+				return t;
+			}
+			else lua_pop(L,2);
+		}
+		return std::string("unknown type");
+	}
+	return std::string(luaL_typename(L,i));
+}
 int lunaStack::arraySize(int tblindex)
 {
 	if (tblindex==-1) tblindex=gettop();

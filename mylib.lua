@@ -1654,9 +1654,6 @@ function table.toPrettyString(t, maxLen)
 		if tk=="string" then
 			str_k="['"..k.."']="
 			out=out..str_k..packValue(v, maxLen-#out)..', '
-		elseif tk=='table' then
-			str_k='[ table? ]='
-			out=out..str_k..packValue(v, maxLen-#out)..', '
 		elseif tk~="number" or k>N then	 
 			str_k='['..k..']='
 			out=out..str_k..packValue(v, maxLen-#out)..', '
@@ -1845,6 +1842,27 @@ function string.trimRight(str)
 	a=string.find(str, '[%s]',#str)
 	if a==nil then return str end
 	return string.trimRight(string.sub(str,1,a-1))
+end
+
+function copyTable(t)
+	-- shallow copy + object copy
+	assert(type(t)=="table", "You must specify a table to copy")
+	local result={}
+
+	for k, v in pairs(t) do
+		if type(v)=="userdata" then
+			if v.copy then
+				result[k]=v:copy()
+			else
+				print('Cannot copy '..k)
+			end
+		else
+			result[k]=v
+		end
+	end
+
+	-- copy the metatable, if there is one
+	return setmetatable(result, getmetatable(t))
 end
 
 function deepCopyTable(t)

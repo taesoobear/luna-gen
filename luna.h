@@ -21,6 +21,11 @@ struct luna_eqstr{
 };
 
 typedef int (*luna_mfp)(lua_State *L);
+#if (defined(_MSC_VER)&& _MSC_VER<1700) || (!defined(_MSC_VER) &&__cplusplus < 201103L)
+#define OLD_COMPILERS
+#endif
+
+#ifdef OLD_COMPILERS
 #ifdef NO_HASH_MAP
 #include <map>
 struct luna_ltsz: std::binary_function<char* const &, char* const &, bool>
@@ -33,7 +38,7 @@ struct luna_ltsz: std::binary_function<char* const &, char* const &, bool>
 typedef std::map<const char*, luna_mfp, luna_ltsz> luna__hashmap;
 #else // not defined NO_HASH_MAP
 #ifdef _MSC_VER
-#include <hash_map>
+#include <hash_map>  // VC2010
 
 class luna_stringhasher : public stdext::hash_compare <const char*>
 {
@@ -59,13 +64,35 @@ typedef stdext::hash_map<const char*, luna_mfp, luna_stringhasher> luna__hashmap
 #include <ext/hash_map> 
 typedef __gnu_cxx::hash<const char*> luna_hash_t;
 typedef __gnu_cxx::hash_map<const char*, luna_mfp, luna_hash_t, luna_eqstr> luna__hashmap;
-#else
-#include <unordered_map>
-typedef std::hash<const char*> luna_hash_t;
-typedef std::unordered_map<const char*, luna_mfp, luna_hash_t, luna_eqstr> luna__hashmap;
 #endif
 #endif // UNIX
-#endif // not defined NO_HASH_MAP
+#endif // not NO_HASH_MAP
+#else // not OLD_COMPILERS
+
+#include <unordered_map>
+#ifdef _MSC_VER
+class luna_hash_t 
+{
+public:
+  size_t operator() (const char* in) const
+  {
+    size_t h = 0;
+	const char* p;
+    for(p = in; *p != 0; ++p)
+		h = 31 * h + (*p);
+    return h;
+  }
+  
+  bool operator() (const char* s1, const char* s2) const
+  {
+    return strcmp(s1, s2)<0;
+  }
+};
+#else
+typedef std::hash<const char*> luna_hash_t;
+#endif
+typedef std::unordered_map<const char*, luna_mfp, luna_hash_t, luna_eqstr> luna__hashmap;
+#endif
 
 typedef struct { const char *name; luna_mfp mfunc; } luna_RegType;
 
@@ -226,7 +253,7 @@ template <typename T> class Luna {
 	}
 
 
-	// use lunaStack::push if possible. 
+	// use lunaStack::push or luna_push<T>(L,obj, gc) if possible. 
 	inline static void push(lua_State *L, const T* obj, bool gc, const char* metatable=T_interface::className)
 	{
 #if defined(METHOD_TABLE_IS_METATABLE) 
@@ -335,6 +362,19 @@ class lunaStack
 		if (delta==0) lua_pop(L,1);
 	}
 
+	// for variable number of arguments:
+	// while(l.currArg<=l.numArg())  l>>res;
+	// or without changing currArg:
+	// for (int i=l.currArg; i<=l.numArg(); i++)
+	// 		printf("%d ", l.luaType(i));
+	inline int numArg() { return gettop();}
+
+	// check type before pop. LUA_NUMBER, LUA_STRING
+	int luaType() { return lua_type(L, currArg); }
+	int luaType(int i) { return lua_type(L, i); }
+	// "number", "string", .. or luna types such as "vector3",...
+	std::string lunaType(int i);
+	std::string lunaType() { return lunaType(currArg);}
 	// retrieve (or pop)
 	friend lunaStack& operator>>( lunaStack& os, double& a)      
 	{ a=os.tonumber(os.currArg); os._incr(); return os;}
@@ -472,6 +512,7 @@ class lunaStack
 	// int numOut=l.beginCall(3);
 	// l >> ret1 >> ret2; // note the order here.
 	// l.endCall(numOut); // cleans the stack
+	
 	int beginCall(int numIn);
 	int beginPcall(int numIn, int errorFunc);
 	void endCall(int numOut);
