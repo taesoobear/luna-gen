@@ -208,7 +208,7 @@ These missing features are due to design decisions made to keep the binding code
 Compatibility
 =
 Only luajit or lua5.1 are fully supported. 
-(Many functionalities still will work for lua 5.2, but some won't.
+(Many functionalities will still work for lua 5.2, but some won't.
 I do not plan to support lua 5.2 or later because of the too many interface-breaking changes happening in the lua language.)
 luna-gen works perfectly with Torch (the luajit-based deep learning library) too. 
 
