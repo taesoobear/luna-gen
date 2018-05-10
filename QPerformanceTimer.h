@@ -1,6 +1,14 @@
 #ifndef QPERFORMANCE_TIMER_H
 #define QPERFORMANCE_TIMER_H
-	
+#ifdef _MSC_VER
+#include <windows.h>
+
+
+#ifndef MIN
+#define MIN(a, b)  (((a) < (b)) ? (a) : (b))
+#define MAX(a, b)  (((a) > (b)) ? (a) : (b))
+#endif
+#endif
 /********************************************************************************
 	Copyright (C) 2004 Sjaak Priester	
 

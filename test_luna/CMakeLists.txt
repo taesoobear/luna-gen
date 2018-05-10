@@ -64,8 +64,12 @@ function(add_luna_test x)
 		"../luna.cpp"
 		"../luna.h"
 		)
-	# param: executable file libraries. librt is necessary for profiler.
-	target_link_libraries("test_${x}" ${LUA_LIBRARY} "rt")
+	if(UNIX)
+		# param: executable file libraries. librt is necessary for profiler.
+		target_link_libraries("test_${x}" ${LUA_LIBRARY} "rt")
+	else()
+		target_link_libraries("test_${x}" ${LUA_LIBRARY} )
+	endif()
 
 	if(UNIX)
 	# execute built test routine
