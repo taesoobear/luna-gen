@@ -72,7 +72,7 @@ function(add_luna_test x)
 	endif()
 
 	if(UNIX)
-	# execute built test routine
+	# execute built test routine -> removed because some tests require mylib.lua in the path.
 	add_custom_command(
 		TARGET "test_${x}"
 		DEPENDS "${EXECUTABLE_OUTPUT_PATH}/test_${x}"

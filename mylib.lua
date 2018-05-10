@@ -467,7 +467,7 @@ function dbg.console(msg, stackoffset)
 		local cmd_arg=tonumber(string.sub(line,2))
 		if not (string.sub(line,2)=="" or cmd_arg) then
 			if not ( cmd=="r" and at(line,2)==" ") then
-				if not string.isOneOf(cmd, ":", ";") then
+				if not string.isOneOf(cmd, ":", ";","?") then
 					cmd=nil
 				end
 			end
@@ -480,6 +480,8 @@ function dbg.console(msg, stackoffset)
 			print('bt[level=3]      : backtrace. Prints callstack')
 			print(';(lua statement) : eval lua statements. Usually, ";" can be omitted. e.g.) print(a) ')
             print('                   print or printTable can be omitted too            e.g.) a ')
+			print('?                : Type ? for help. e.g. ? torch.bitor')
+			print('help             : shows the usage of dbg.console (this debugger)')
 			print(':(lua statement) : eval lua statements and exit debug console. e.g.) :dbg.startCount(10)')
 			print('s[number=1]      : proceed n steps')
 			print('n		        : go to the next line')
@@ -553,6 +555,9 @@ function dbg.console(msg, stackoffset)
 			end
 		elseif cmd==";" then
 			handleStatement(string.sub(line,2))
+		elseif cmd=='?' then
+			print("help("..string.sub(line,2)..")")
+			handleStatement("help("..string.sub(line,2)..")")
 		elseif cmd==":" then
 			handleStatement(string.sub(line,2))
 			break

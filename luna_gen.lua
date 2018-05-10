@@ -133,7 +133,7 @@ do -- utility functions
 	end
 	function codeRequireMylib(additionalLuaCode)
 		return "luna_dostring(L, "..luacodeInCquote([[
-		package.path="]]..script_path..[[/?.lua;package.path"
+		package.path=package.path..";]]..script_path..[[/?.lua"
 		require('mylib')
 		]]..(additionalLuaCode or "") ) -- closing luacodeInCquote 
 		..");\n" -- closing luaL_dostring
