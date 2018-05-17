@@ -45,7 +45,9 @@ Example
 	  classes={
 	   {
 		 name='math.NonuniformSpline', -- lua name
-		 className='NonuniformSpline', -- c++ name
+		 className='NonuniformSpline', -- an optional c++ name. 
+     decl='class NonuniformSpline;', -- will be used in the generated header files.
+     headerFile='NonuniformSpline.h', -- will be #included in the generated cpp files only.
 		 ctors={'(vectorn const&, const matrixn&)', '()'}, -- constructors
 		 memberFunctions={[[
 		   void getCurve(vectorn const& time, matrixn& points);
@@ -98,7 +100,7 @@ Example
 	  write([[
 					  class boolNView;
 					  class boolN;
-					  class NonuniformSpline;
+					  //class NonuniformSpline; // unnecessary, because of 'decl="class NonuniformSpline;" above'
 	  ]])
 	  writeHeader(bindTarget) 
 	  flushWritten('bind.h')
@@ -108,8 +110,8 @@ Example
 	  write('#include "bind.h"') 
 	  write([[
 		#include "stdafx.h"
-		#include "spline.h"
 		#include "boolN.h"
+		//#include "NonuniformSpline.h" // unnecessary because of headerFile='NonuniformSpline.h'
 	  ]])
 	  writeDefinitions(bindTarget, 'Register_bind') -- input can be non-overlapping subset of entire bindTarget 
 	  flushWritten('bind.cpp') 

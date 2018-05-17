@@ -16,7 +16,7 @@ do -- user configurations : all these can be changed in input file or from comma
 	verbose=false
 	gen_lua={}
 	gen_lua.supportedClassProperties={'^ifdef$','^ifndef$','^isLuaInheritable$','^isExtendableFromLua$',
-	'^decl$','^if_$', '^enums$','^inheritsFrom$', '^name$','^className$','^ctors$','^wrapperCode$',
+	'^headerFile$','^decl$','^if_$', '^enums$','^inheritsFrom$', '^name$','^className$','^ctors$','^wrapperCode$',
 	'^globalWrapperCode',  '^staticMemberFunctions$', '^memberFunctionsFromFile$', '^memberFunctions$',
 	'^read_properties$','^write_properties$','^customFunctionsToRegister$', '^properties$',}
 	-- you can use luaName instead of name
@@ -834,6 +834,7 @@ do -- utility functions
 							local s,e,cc1,cc2=string.find(ren,'%;([^=]+)=([^%;]+)%;')
 							if s==nil then break end
 							options[cc1]=cc2
+							--ren=string.trimSpaces(string.gsub(ren,'%;[^=]+=[^%;]+%;',''))
 							ren=string.trimSpaces(string.sub(ren, 1,s-1)..string.sub(ren, e+1)..';')
 						end
 						ren=string.trimSpaces(string.gsub(ren, ';',''))
@@ -1299,12 +1300,14 @@ function writeHeader(bindTarget)
 	gen_lua.writeHeaderCounter=gen_lua.writeHeaderCounter+1
 	addLine('#ifndef '..defname)
 	addLine('#define '..defname)
-	addLine('// declare all classes before including this file')
+	addLine('// Declare all classes before including this file or using the "decl" property in the luna_gen definition file.')
 	addLine('// e.g. class LMat; class LMatView; .... ')
-	addLine('// The forward declaration is not included here because luna_gen cannot distinguish struct, class, or namespace.')
+	addLine('// The forward declaration is not automatically made because luna_gen cannot distinguish struct, class, or namespace.')
+	addLine("// But you can declare a class explictly by using something like decl='class AAA;' ")
+	addLine('// Also, you can add a "#include" sentence by using headerFile="AAA.h" ')
 
 	if verbosecpp then
-		addLine('// : number denotes the line number of luna_gen.lua which generated that line')
+		addLine('// The number at the end of each line denotes the line number of luna_gen.lua which generated that line')
 	end
 	for iluaclass, luaclass in ipairs(bindTarget.classes) do
 		if luaclass.decl then
@@ -1371,6 +1374,9 @@ function writeDefinitions(bindTarget, bindfunc_name, customScript)
 		local cppclass_name=normalizedClassNameToClassName(luaclass.className)
 		local cppinterface_name=luaclass.cppinterface_name
 
+		if luaclass.headerFile then
+			addLine('#include "'..luaclass.headerFile..'"\n')
+		end
 		if luaclass.globalWrapperCode then
 			addLine(luaclass.globalWrapperCode)
 		end
