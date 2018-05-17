@@ -1103,6 +1103,7 @@ local function zip_with_helper(result_helper, rh_arg, ...)
 end
 
  --[[
+ --usage: array.filter 
     filter(func, [one or more tables])
 
     Selects the items from the argument list(s), calls
@@ -1225,6 +1226,20 @@ function array:pushBack(...)
 	assert(self)
 	for i, x in ipairs({...}) do
 		table.insert(self, x)
+	end
+end
+function array:pushFront(...)
+	assert(self)
+	local b={}
+	for i, x in ipairs(self) do
+		b[i]=x
+	end
+	for i, x in ipairs({...}) do
+		self[i]=x
+	end
+	local n=#{...}
+	for i, x in ipairs(b) do
+		self[n+i]=x
 	end
 end
 
@@ -1660,7 +1675,7 @@ function table.toPrettyString(t, maxLen)
 			str_k="['"..k.."']="
 			out=out..str_k..packValue(v, maxLen-#out)..', '
 		elseif tk~="number" or k>N then	 
-			str_k='['..k..']='
+			str_k='['..tostring(k)..']='
 			out=out..str_k..packValue(v, maxLen-#out)..', '
 		end
 		if #out>maxLen then
