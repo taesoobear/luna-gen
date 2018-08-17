@@ -66,7 +66,7 @@ function(add_luna_test x)
 		)
 	if(UNIX)
 		# param: executable file libraries. librt is necessary for profiler.
-		target_link_libraries("test_${x}" ${LUA_LIBRARY} "rt")
+		target_link_libraries("test_${x}" ${LUA_LIBRARY} "rt" "dl")
 	else()
 		target_link_libraries("test_${x}" ${LUA_LIBRARY} )
 	endif()

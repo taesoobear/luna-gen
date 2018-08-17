@@ -91,7 +91,7 @@ public:
 #else
 typedef std::hash<const char*> luna_hash_t;
 #endif
-typedef std::unordered_map<const char*, luna_mfp, luna_hash_t, luna_eqstr> luna__hashmap;
+typedef std::unordered_map<std::string, luna_mfp> luna__hashmap;
 #endif
 
 typedef struct { const char *name; luna_mfp mfunc; } luna_RegType;
